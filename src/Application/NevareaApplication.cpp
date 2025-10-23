@@ -1,16 +1,25 @@
 #include "NevareaApplication.hpp"
 
-namespace Nevaera {
+namespace Nevarea {
 	uint32_t window_width = 1280;
 	uint32_t window_height = 720;
 	const char* window_title = "Nevarea Renderer";
 
-	void Nevaera::application_init(ApplicationState* app)
+	void application_init(ApplicationState* app)
 	{
+		// init glfw
+		glfwSetErrorCallback([](int error, const char* description) {
+			std::cerr << "GLFW Error [" << error << "]: " << description << std::endl;
+		});
+
 		if (!window_system_init(&app->window, window_width, window_width, window_title)) {
 			std::cerr << "Window failed to initialize!\n";
 			return;
 		}
+
+		// init vulkan context
+		VulkanContext vulkan_context{};
+		vulkan_context_init(vulkan_context, &app->window);
 
 		app->running = true;
 	}

@@ -6,7 +6,7 @@ add_executable(Nevarea
     src/main.cpp
     src/Platform/WindowSystem.cpp
     src/Application/NevareaApplication.cpp
-)
+ "src/Renderer/Vulkan/VulkanContext.cpp")
 
 target_include_directories(Nevarea
     PUBLIC
@@ -17,9 +17,8 @@ target_include_directories(Nevarea
 add_subdirectory(external/glfw)
 target_link_libraries(Nevarea PRIVATE glfw)
 
-# Vulkan setup (uncomment once vulkan is added)
-# find_package(Vulkan REQUIRED)
-# target_link_libraries(Nevarea PRIVATE Vulkan::Vulkan)
+find_package(Vulkan REQUIRED)
+target_link_libraries(Nevarea PRIVATE Vulkan::Vulkan)
 
 set_target_properties(Nevarea PROPERTIES
     CXX_STANDARD 20

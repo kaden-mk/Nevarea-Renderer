@@ -2,10 +2,12 @@
 
 #include <iostream>
 #include <Platform/WindowSystem.hpp>
+#include <Renderer/Vulkan/VulkanContext.hpp>
 
-namespace Nevaera {
+namespace Nevarea {
 	struct ApplicationState {
 		WindowSystemState window;
+		VulkanContext vulkan_context;
 		bool running;
 	};
 

@@ -1,6 +1,6 @@
 #include "WindowSystem.hpp"
 
-namespace Nevaera {
+namespace Nevarea {
 	bool window_system_init(WindowSystemState* state, uint32_t width, uint32_t height, const char* title)
 	{
 		if (!glfwInit())

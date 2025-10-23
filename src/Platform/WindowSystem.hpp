@@ -4,7 +4,7 @@
 
 #include <GLFW/glfw3.h>
 
-namespace Nevaera {
+namespace Nevarea {
 	struct WindowSystemState {
 		GLFWwindow* window;
 		uint32_t width;
