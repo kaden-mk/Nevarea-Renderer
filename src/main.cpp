@@ -1,7 +1,6 @@
 #include <iostream>
 
 #include <Application/NevareaApplication.hpp>
-#define NEVAREA_DEBUG // enable validation layers
 
 using namespace Nevarea;
 

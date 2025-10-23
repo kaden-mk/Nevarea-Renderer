@@ -8,6 +8,8 @@ add_executable(Nevarea
     src/Application/NevareaApplication.cpp
  "src/Renderer/Vulkan/VulkanContext.cpp")
 
+target_compile_definitions(Nevarea PRIVATE NEVAREA_DEBUG)
+
 target_include_directories(Nevarea
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/src
