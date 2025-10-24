@@ -17,9 +17,8 @@ namespace Nevarea {
 			return;
 		}
 
-		// init nevarea context
-		VulkanContext vulkan_context{};
-		vulkan_context_init(vulkan_context, &app->window);
+		// init vulkan context
+		vulkan_context_init(app->vulkan_context, &app->window);
 
 		app->running = true;
 	}
@@ -28,12 +27,13 @@ namespace Nevarea {
 	{
 		while (!window_system_should_close(&app->window) && app->running)
 		{
-			window_system_poll_events(&app->window);
+			window_system_poll_events();
 		}
 	}
 
 	void application_shutdown(ApplicationState* app)
 	{
+		vulkan_context_destroy(app->vulkan_context);
 		window_system_cleanup(&app->window);
 	}
 }

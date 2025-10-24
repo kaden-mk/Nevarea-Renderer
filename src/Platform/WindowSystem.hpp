@@ -17,7 +17,7 @@ namespace Nevarea {
 	bool window_system_init(WindowSystemState* state, uint32_t width, uint32_t height, const char* title);
 	bool window_system_should_close(WindowSystemState* state);
 
-	void window_system_poll_events(WindowSystemState* state);
+	void window_system_poll_events();
 	void window_system_cleanup(WindowSystemState* state);
 	void window_system_create_surface(WindowSystemState* window, VkInstance instance, VkSurfaceKHR* surface);
 }

@@ -29,7 +29,7 @@ namespace Nevarea {
 		return glfwWindowShouldClose(state->window);
 	}
 
-	void window_system_poll_events(WindowSystemState* state)
+	void window_system_poll_events()
 	{
 		glfwPollEvents();
 	}

@@ -6,7 +6,7 @@ add_executable(Nevarea
     src/main.cpp
     src/Platform/WindowSystem.cpp
     src/Application/NevareaApplication.cpp
- "src/Renderer/Vulkan/VulkanContext.cpp")
+ "src/Renderer/Vulkan/VulkanContext.cpp" "src/Renderer/Vulkan/VulkanDevice.cpp")
 
 target_compile_definitions(Nevarea PRIVATE NEVAREA_DEBUG)
 
@@ -27,6 +27,7 @@ set_target_properties(Nevarea PROPERTIES
     CXX_STANDARD_REQUIRED ON
 )
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
 if(MSVC)
     target_compile_options(Nevarea PRIVATE /W4 /permissive-)
 else()
