@@ -2,7 +2,9 @@
 
 #include <iostream>
 
+#define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#include <vulkan/vulkan.h>
 
 namespace Nevarea {
 	struct WindowSystemState {
@@ -17,4 +19,5 @@ namespace Nevarea {
 
 	void window_system_poll_events(WindowSystemState* state);
 	void window_system_cleanup(WindowSystemState* state);
+	void window_system_create_surface(WindowSystemState* window, VkInstance instance, VkSurfaceKHR* surface);
 }

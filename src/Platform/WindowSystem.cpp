@@ -1,5 +1,7 @@
 #include "WindowSystem.hpp"
 
+#include <vulkan/vulkan.h>
+
 namespace Nevarea {
 	bool window_system_init(WindowSystemState* state, uint32_t width, uint32_t height, const char* title)
 	{
@@ -36,5 +38,11 @@ namespace Nevarea {
 	{
 		glfwDestroyWindow(state->window);
 		glfwTerminate();
+	}
+
+	void window_system_create_surface(WindowSystemState* state, VkInstance instance, VkSurfaceKHR* surface)
+	{
+		if (glfwCreateWindowSurface(instance, state->window, nullptr, surface) != VK_SUCCESS)
+			throw std::runtime_error("Could not create window surface!");
 	}
 }

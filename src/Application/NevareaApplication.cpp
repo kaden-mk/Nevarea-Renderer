@@ -17,7 +17,7 @@ namespace Nevarea {
 			return;
 		}
 
-		// init vulkan context
+		// init nevarea context
 		VulkanContext vulkan_context{};
 		vulkan_context_init(vulkan_context, &app->window);
 
