@@ -83,6 +83,11 @@ namespace Nevarea {
 		vulkan_device_pick_physical_device(context.instance, &context.physical_device, context.surface);
 	}
 
+	void vulkan_context_create_logical_device(VulkanContext& context)
+	{
+		vulkan_device_create_logical_device(context.instance, context.physical_device, context.surface, &context.device);
+	}
+
 	void vulkan_context_init(VulkanContext& context, WindowSystemState* window) {
 		context.window = *window;
 
@@ -90,17 +95,16 @@ namespace Nevarea {
 		vulkan_context_debug_messenger(context);
 		vulkan_context_create_surface(context);
 		vulkan_context_pick_physical_device(context);
+		vulkan_context_create_logical_device(context);
 	}
 
 	void vulkan_context_destroy(VulkanContext& context)
 	{
-		//vkDestroyDevice(context.device, nullptr);
+		vkDestroyDevice(context.device, nullptr);
 
 		#ifdef NEVAREA_DEBUG
 		destroy_debug_utils_messenger_ext(context.instance, context.debug_messenger, nullptr);
 		#endif // NEVAREA_DEBUG
-
-		std::cout << "Instance: " << context.instance << " Surface: " << context.surface << std::endl;
 
 		vkDestroySurfaceKHR(context.instance, context.surface, nullptr);
 		vkDestroyInstance(context.instance, nullptr);

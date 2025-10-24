@@ -13,9 +13,18 @@ namespace Nevarea {
 		}
 	};
 
+	struct NevareaDevice {
+		VkPhysicalDevice physical_device;
+		VkDevice device;
+		uint32_t graphics_queue_family;
+		VkQueue graphics_queue;
+		VkQueue present_queue;
+	};
+
 	QueueFamilyIndices find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface);
 	bool check_device_extension_support(VkPhysicalDevice device);
 	bool check_device_compatibility(VkPhysicalDevice device, VkSurfaceKHR surface);
 
 	void vulkan_device_pick_physical_device(VkInstance instance, VkPhysicalDevice* physical_device, VkSurfaceKHR surface);
+	void vulkan_device_create_logical_device(VkInstance instance, VkPhysicalDevice physical_device, VkSurfaceKHR surface, VkDevice* device);
 }

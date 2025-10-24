@@ -22,6 +22,7 @@ namespace Nevarea {
 	void vulkan_context_debug_messenger(VulkanContext& context);
 	void vulkan_context_create_surface(VulkanContext& context);
 	void vulkan_context_pick_physical_device(VulkanContext& context);
+	void vulkan_context_create_logical_device(VulkanContext& context);
 
 	void vulkan_context_init(VulkanContext& context, WindowSystemState* window);
 	void vulkan_context_destroy(VulkanContext& context);
