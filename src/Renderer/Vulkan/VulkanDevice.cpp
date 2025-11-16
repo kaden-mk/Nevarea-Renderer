@@ -6,33 +6,39 @@
 #include <set>
 
 namespace Nevarea {
-	QueueFamilyIndices find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface)
+	// TO IMRPOVE
+	QueueFamilyInfo find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface)
 	{
-		QueueFamilyIndices indices;
-
 		uint32_t queue_family_count = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, nullptr);
 		
 		std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
 		vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, queue_families.data());
 
-		int i = 0;
-		for (const auto& queue_family : queue_families) {
-			if (queue_family.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-				indices.graphics_family = i;
+		int queue_family_index = -1;
+		for (uint32_t i = 0; i < queue_family_count; i++) {
+			if (queue_families[i].queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)) {
+				VkBool32 present_support = VK_FALSE;
+				vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &present_support);
 
-			VkBool32 present_support = false;
-			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &present_support);
-
-			if (present_support)
-				indices.present_family = i;
-
-			if (indices.is_complete())
-				break;
-			i++;
+				if (present_support) {
+					queue_family_index = i;
+					break;
+				}
+			}
 		}
 
-		return indices;
+		if (queue_family_index == -1)
+			throw std::runtime_error("Could not find a compatible queue family!");
+
+		float queue_priority = 1.0f;
+		VkDeviceQueueCreateInfo create_info{};
+		create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		create_info.queueFamilyIndex = queue_family_index;
+		create_info.queueCount = 1;
+		create_info.pQueuePriorities = &queue_priority;
+
+		return { queue_family_index, create_info };
 	}
 
 	bool check_device_extension_support(VkPhysicalDevice device)
@@ -56,23 +62,33 @@ namespace Nevarea {
 		VkPhysicalDeviceProperties device_properties;
 		vkGetPhysicalDeviceProperties(device, &device_properties);
 
-		QueueFamilyIndices indices = find_queue_families(device, surface);
 		bool extensions_supported = check_device_extension_support(device);
 
-		bool swap_chain_adequate = false;
+		bool swapchain_adequate = false;
 		if (extensions_supported) {
-			swap_chain_adequate = true; // replace with the stuff below once added
-			/*SwapChainSupportDetails swap_chain_support = query_swap_chain_support(device);
-			swap_chain_adequate = !swap_chain_support.Formats.empty() && !swap_chain_support.PresentModes.empty();*/
+			swapchain_adequate = true; // replace with the stuff below once added
+			/*SwapChainSupportDetails swapchain_support = query_swapchain_support(device);
+			swapchain_adequate = !swapchain_support.Formats.empty() && !swapchain_support.PresentModes.empty();*/
 		}
 
-		return indices.is_complete()
+		return find_queue_families(device, surface).index >= 0
 			&& extensions_supported
-			&& swap_chain_adequate
+			&& swapchain_adequate
 			&& device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 	}
 
-	void vulkan_device_pick_physical_device(VkInstance instance, VkPhysicalDevice* physical_device, VkSurfaceKHR surface)
+	void vulkan_device_init(NevareaDevice* nevarea_device, VkInstance instance, VkSurfaceKHR surface)
+	{
+		vulkan_device_pick_physical_device(instance, surface, nevarea_device);
+		vulkan_device_create_logical_device(instance, surface, nevarea_device);
+	}
+
+	void vulkan_device_destroy(NevareaDevice* nevarea_device)
+	{
+		vkDestroyDevice(nevarea_device->device, nullptr);
+	}
+
+	void vulkan_device_pick_physical_device(VkInstance instance, VkSurfaceKHR surface, NevareaDevice* nevarea_device)
 	{
 		uint32_t physical_device_count = 0;
 		vkEnumeratePhysicalDevices(instance, &physical_device_count, nullptr);
@@ -83,39 +99,26 @@ namespace Nevarea {
 		// TODO: check if the device has the highest amount of memory(?)
 		for (const VkPhysicalDevice device : physical_devices) {
 			if (check_device_compatibility(device, surface)) {
-				*physical_device = device;
+				nevarea_device->physical_device = device;
 				break;
 			}
 		}
 
-		if (physical_device == VK_NULL_HANDLE)
+		if (nevarea_device->physical_device == VK_NULL_HANDLE)
 			throw std::runtime_error("Could not find a compatible physical device!");
 
 		// might add these later to the context struct or some shit... maybe have a device struct?
 		VkPhysicalDeviceProperties device_properties;
 		VkPhysicalDeviceFeatures device_features;
-		vkGetPhysicalDeviceProperties(*physical_device, &device_properties);
-		vkGetPhysicalDeviceFeatures(*physical_device, &device_features);
+		vkGetPhysicalDeviceProperties(nevarea_device->physical_device, &device_properties);
+		vkGetPhysicalDeviceFeatures(nevarea_device->physical_device, &device_features);
 
 		std::cout << "Physical Device Chosen: " << device_properties.deviceName << std::endl;
 	}
 
-	void vulkan_device_create_logical_device(VkInstance instance, VkPhysicalDevice physical_device, VkSurfaceKHR surface, VkDevice* device)
+	void vulkan_device_create_logical_device(VkInstance instance, VkSurfaceKHR surface, NevareaDevice* nevarea_device)
 	{
-		QueueFamilyIndices indices = find_queue_families(physical_device, surface);
-
-		std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
-		std::set<uint32_t> unique_queue_families = { indices.graphics_family.value(), indices.present_family.value() };
-
-		float queue_priority = 1.0f;
-		for (uint32_t queue_family : unique_queue_families) {
-			VkDeviceQueueCreateInfo queue_create_info{};
-			queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-			queue_create_info.queueFamilyIndex = queue_family;
-			queue_create_info.queueCount = 1;
-			queue_create_info.pQueuePriorities = &queue_priority;
-			queue_create_infos.push_back(queue_create_info);
-		}
+		QueueFamilyInfo queue_info = find_queue_families(nevarea_device->physical_device, surface);
 
 		VkPhysicalDeviceDescriptorIndexingFeatures indexing_features{};
 		indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
@@ -143,8 +146,8 @@ namespace Nevarea {
 		VkDeviceCreateInfo create_info{};
 		create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 		create_info.pNext = &indexing_features;
-		create_info.queueCreateInfoCount = static_cast<uint32_t>(queue_create_infos.size());
-		create_info.pQueueCreateInfos = queue_create_infos.data();
+		create_info.queueCreateInfoCount = 1;
+		create_info.pQueueCreateInfos = &queue_info.create_info;
 		create_info.pEnabledFeatures = &device_features.features;
 		create_info.enabledExtensionCount = static_cast<uint32_t>(device_extensions.size());
 		create_info.ppEnabledExtensionNames = device_extensions.data();
@@ -155,7 +158,7 @@ namespace Nevarea {
 		create_info.ppEnabledLayerNames = validation_layers.data();
 		#endif	
 
-		if (vkCreateDevice(physical_device, &create_info, nullptr, device))
+		if (vkCreateDevice(nevarea_device->physical_device, &create_info, nullptr, &nevarea_device->device))
 			throw std::runtime_error("Could not create logical device!");
 
 		/*vkGetDeviceQueue(device, indices.graphics_family.value(), 0, &graphics_queue);

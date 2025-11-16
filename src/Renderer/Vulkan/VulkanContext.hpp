@@ -4,6 +4,8 @@
 
 #include <Platform/WindowSystem.hpp>
 
+#include "VulkanDevice.hpp"
+
 namespace Nevarea {
 	// might seperate device stuff into a different struct?
 	struct VulkanContext {
@@ -11,21 +13,13 @@ namespace Nevarea {
 		VkSurfaceKHR surface;
 		VkDebugUtilsMessengerEXT debug_messenger;
 		WindowSystemState window;
-		VkPhysicalDevice physical_device;
-		VkDevice device;
-		uint32_t graphics_queue_family;
-		VkQueue graphics_queue;
-		VkQueue present_queue;
+		NevareaDevice nevarea_device;
 	};
 
 	void vulkan_context_create_instance(VulkanContext& context);
 	void vulkan_context_debug_messenger(VulkanContext& context);
 	void vulkan_context_create_surface(VulkanContext& context);
-	void vulkan_context_pick_physical_device(VulkanContext& context);
-	void vulkan_context_create_logical_device(VulkanContext& context);
 
 	void vulkan_context_init(VulkanContext& context, WindowSystemState* window);
 	void vulkan_context_destroy(VulkanContext& context);
-
-	void helper_populate_debug_create_info(VkDebugUtilsMessengerCreateInfoEXT& debug_create_info);
 }

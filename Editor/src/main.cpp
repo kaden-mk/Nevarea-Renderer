@@ -1,5 +1,3 @@
-#include <iostream>
-
 #include <Application/NevareaApplication.hpp>
 
 using namespace Nevarea;

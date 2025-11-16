@@ -4,27 +4,20 @@
 #include <optional>
 
 namespace Nevarea {
-	struct QueueFamilyIndices {
-		std::optional<uint32_t> graphics_family;
-		std::optional<uint32_t> present_family;
-
-		bool is_complete() const {
-			return graphics_family.has_value() && present_family.has_value();
-		}
+	struct QueueFamilyInfo {
+		int index;
+		VkDeviceQueueCreateInfo create_info;
 	};
 
 	struct NevareaDevice {
 		VkPhysicalDevice physical_device;
 		VkDevice device;
-		uint32_t graphics_queue_family;
-		VkQueue graphics_queue;
-		VkQueue present_queue;
+		VkQueue queue;
 	};
 
-	QueueFamilyIndices find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface);
-	bool check_device_extension_support(VkPhysicalDevice device);
-	bool check_device_compatibility(VkPhysicalDevice device, VkSurfaceKHR surface);
+	void vulkan_device_init(NevareaDevice* nevarea_device, VkInstance instance, VkSurfaceKHR surface);
+	void vulkan_device_destroy(NevareaDevice* nevarea_device);
 
-	void vulkan_device_pick_physical_device(VkInstance instance, VkPhysicalDevice* physical_device, VkSurfaceKHR surface);
-	void vulkan_device_create_logical_device(VkInstance instance, VkPhysicalDevice physical_device, VkSurfaceKHR surface, VkDevice* device);
+	void vulkan_device_pick_physical_device(VkInstance instance, VkSurfaceKHR surface, NevareaDevice* nevarea_device);
+	void vulkan_device_create_logical_device(VkInstance instance, VkSurfaceKHR surface, NevareaDevice* nevarea_device);
 }
