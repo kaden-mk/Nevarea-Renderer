@@ -5,7 +5,12 @@
 #include <iostream>
 #include <set>
 
-namespace Nevarea {
+namespace Nevarea::Renderer {
+	struct QueueFamilyInfo {
+		int index;
+		VkDeviceQueueCreateInfo create_info;
+	};
+
 	// TO IMRPOVE
 	QueueFamilyInfo find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface)
 	{
@@ -77,18 +82,18 @@ namespace Nevarea {
 			&& device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 	}
 
-	void vulkan_device_init(NevareaDevice* nevarea_device, VkInstance instance, VkSurfaceKHR surface)
+	void vulkan_device_init(DeviceContext* gpu_device, VkInstance instance, VkSurfaceKHR surface)
 	{
-		vulkan_device_pick_physical_device(instance, surface, nevarea_device);
-		vulkan_device_create_logical_device(instance, surface, nevarea_device);
+		vulkan_device_pick_physical_device(instance, surface, gpu_device);
+		vulkan_device_create_logical_device(instance, surface, gpu_device);
 	}
 
-	void vulkan_device_destroy(NevareaDevice* nevarea_device)
+	void vulkan_device_destroy(DeviceContext* gpu_device)
 	{
-		vkDestroyDevice(nevarea_device->device, nullptr);
+		vkDestroyDevice(gpu_device->device, nullptr);
 	}
 
-	void vulkan_device_pick_physical_device(VkInstance instance, VkSurfaceKHR surface, NevareaDevice* nevarea_device)
+	void vulkan_device_pick_physical_device(VkInstance instance, VkSurfaceKHR surface, DeviceContext* gpu_device)
 	{
 		uint32_t physical_device_count = 0;
 		vkEnumeratePhysicalDevices(instance, &physical_device_count, nullptr);
@@ -99,26 +104,26 @@ namespace Nevarea {
 		// TODO: check if the device has the highest amount of memory(?)
 		for (const VkPhysicalDevice device : physical_devices) {
 			if (check_device_compatibility(device, surface)) {
-				nevarea_device->physical_device = device;
+				gpu_device->physical_device = device;
 				break;
 			}
 		}
 
-		if (nevarea_device->physical_device == VK_NULL_HANDLE)
+		if (gpu_device->physical_device == VK_NULL_HANDLE)
 			throw std::runtime_error("Could not find a compatible physical device!");
 
 		// might add these later to the context struct or some shit... maybe have a device struct?
 		VkPhysicalDeviceProperties device_properties;
 		VkPhysicalDeviceFeatures device_features;
-		vkGetPhysicalDeviceProperties(nevarea_device->physical_device, &device_properties);
-		vkGetPhysicalDeviceFeatures(nevarea_device->physical_device, &device_features);
+		vkGetPhysicalDeviceProperties(gpu_device->physical_device, &device_properties);
+		vkGetPhysicalDeviceFeatures(gpu_device->physical_device, &device_features);
 
 		std::cout << "Physical Device Chosen: " << device_properties.deviceName << std::endl;
 	}
 
-	void vulkan_device_create_logical_device(VkInstance instance, VkSurfaceKHR surface, NevareaDevice* nevarea_device)
+	void vulkan_device_create_logical_device(VkInstance instance, VkSurfaceKHR surface, DeviceContext* gpu_device)
 	{
-		QueueFamilyInfo queue_info = find_queue_families(nevarea_device->physical_device, surface);
+		QueueFamilyInfo queue_info = find_queue_families(gpu_device->physical_device, surface);
 
 		VkPhysicalDeviceDescriptorIndexingFeatures indexing_features{};
 		indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
@@ -158,7 +163,7 @@ namespace Nevarea {
 		create_info.ppEnabledLayerNames = validation_layers.data();
 		#endif	
 
-		if (vkCreateDevice(nevarea_device->physical_device, &create_info, nullptr, &nevarea_device->device))
+		if (vkCreateDevice(gpu_device->physical_device, &create_info, nullptr, &gpu_device->device))
 			throw std::runtime_error("Could not create logical device!");
 
 		/*vkGetDeviceQueue(device, indices.graphics_family.value(), 0, &graphics_queue);

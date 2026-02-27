@@ -1,19 +1,22 @@
 #pragma once
 
+#include <vector>
 #include <vulkan/vulkan.h>
 
 #include <Platform/WindowSystem.hpp>
 
 #include "VulkanDevice.hpp"
+#include "VulkanSwapchain.hpp"
 
 namespace Nevarea::Renderer {
 	// might seperate device stuff into a different struct?
 	struct VulkanContext {
 		VkInstance instance;
-		VkSurfaceKHR surface;
 		VkDebugUtilsMessengerEXT debug_messenger;
 		WindowSystemState window;
-		NevareaDevice nevarea_device;
+
+		GpuDevice device;
+		SurfaceContext surface;
 	};
 
 	void vulkan_context_create_instance(VulkanContext& context);

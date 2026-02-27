@@ -67,14 +67,14 @@ namespace Nevarea::Renderer {
 
 		VkDebugUtilsMessengerCreateInfoEXT create_info{};
 		populate_debug_create_info(create_info);
-
+		
 		if (create_debug_utils_messenger_ext(context.instance, &create_info, nullptr, &context.debug_messenger) != VK_SUCCESS)
 			throw std::runtime_error("failed to set up debug messenger!");
 	}
 
 	void vulkan_context_create_surface(VulkanContext& context)
 	{
-		window_system_create_surface(&context.window, context.instance, &context.surface);
+		window_system_create_surface(&context.window, context.instance, &context.surface.surface);
 	}
 
 	void vulkan_context_init(VulkanContext& context, WindowSystemState* window) {
@@ -83,18 +83,18 @@ namespace Nevarea::Renderer {
 		vulkan_context_create_instance(context);
 		vulkan_context_debug_messenger(context);
 		vulkan_context_create_surface(context);
-		vulkan_device_init(&context.nevarea_device, context.instance, context.surface);
+		vulkan_device_init(&context.device, context.instance, context.surface.surface);
 	}
 
 	void vulkan_context_destroy(VulkanContext& context)
 	{
-		vulkan_device_destroy(&context.nevarea_device);
+		vulkan_device_destroy(&context.device);
 
 		#ifdef NEVAREA_DEBUG
 		destroy_debug_utils_messenger_ext(context.instance, context.debug_messenger, nullptr);
 		#endif // NEVAREA_DEBUG
 
-		vkDestroySurfaceKHR(context.instance, context.surface, nullptr);
+		vkDestroySurfaceKHR(context.instance, context.surface.surface, nullptr);
 		vkDestroyInstance(context.instance, nullptr);
 	}
 }

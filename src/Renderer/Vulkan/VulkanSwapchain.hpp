@@ -14,11 +14,23 @@ namespace Nevarea::Renderer {
         std::vector<VkFramebuffer> framebuffers;
 
         VkRenderPass render_pass;
-
-        VkSemaphore image_available_semaphore;
-        VkSemaphore render_finished_semaphore;
-        VkFence in_flight_fence;
 	};
 
-    void vulkan_swapchain_init(SwapchainContext& swapchain, VkPhysicalDevice physical_device, VkSurfaceKHR surface);
+    struct FrameContext {
+        std::vector<VkSemaphore> image_available;
+        std::vector<VkSemaphore> render_finished;
+        std::vector<VkFence> in_flight;
+
+        uint32_t current_frame;
+        uint32_t max_frames_in_flight;
+    };
+
+    struct SurfaceContext {
+        VkSurfaceKHR surface;
+        VkSurfaceCapabilitiesKHR capabilities;
+        std::vector<VkSurfaceFormatKHR> supported_formats;
+        std::vector<VkPresentModeKHR> supported_present_modes;
+    };
+
+    void vulkan_swapchain_init(SwapchainContext& swapchain, VkPhysicalDevice physical_device, SurfaceContext& surface);
 }
