@@ -11,8 +11,9 @@ namespace Nevarea::Renderer {
 	struct DeviceContext {
 		VkPhysicalDevice physical_device;
 		VkDevice device;
+
 		VkQueue graphics_queue;
-		uint32_t graphics_queue_family;
+		VkQueue present_queue;
 	};
 
 	void vulkan_device_init(VulkanContext& context);

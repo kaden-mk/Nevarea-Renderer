@@ -8,44 +8,38 @@
 #include <set>
 
 namespace Nevarea::Renderer {
-	struct QueueFamilyInfo {
-		int index;
-		VkDeviceQueueCreateInfo create_info;
+	struct QueueFamilyIndices {
+		std::optional<uint32_t> graphics_family;
+		std::optional<uint32_t> present_family;
+
+		bool is_complete() {
+			return graphics_family.has_value() && present_family.has_value();
+		}
 	};
 
-	// TO IMRPOVE
-	QueueFamilyInfo find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface)
-	{
+	QueueFamilyIndices find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface) {
+		QueueFamilyIndices indices;
+
 		uint32_t queue_family_count = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, nullptr);
-		
+
 		std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
 		vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, queue_families.data());
 
-		int queue_family_index = -1;
 		for (uint32_t i = 0; i < queue_family_count; i++) {
-			if (queue_families[i].queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)) {
-				VkBool32 present_support = VK_FALSE;
-				vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &present_support);
+			if (queue_families[i].queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT))
+				indices.graphics_family = i;
 
-				if (present_support) {
-					queue_family_index = i;
-					break;
-				}
-			}
+			VkBool32 present_support = false;
+			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &present_support);
+
+			if (present_support)
+				indices.present_family = i;
+
+			if (indices.is_complete()) break;
 		}
 
-		if (queue_family_index == -1)
-			throw std::runtime_error("Could not find a compatible queue family!");
-
-		float queue_priority = 1.0f;
-		VkDeviceQueueCreateInfo create_info{};
-		create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-		create_info.queueFamilyIndex = queue_family_index;
-		create_info.queueCount = 1;
-		create_info.pQueuePriorities = &queue_priority;
-
-		return { queue_family_index, create_info };
+		return indices;
 	}
 
 	bool check_device_extension_support(VkPhysicalDevice device)
@@ -91,11 +85,19 @@ namespace Nevarea::Renderer {
 
 		bool extensions_supported = check_device_extension_support(device);
 		bool swapchain_adequate = is_swapchain_adequate(device, surface);
+		bool queue_family_is_complete = find_queue_families(device, surface).is_complete();
 
-		return find_queue_families(device, surface).index >= 0
+		VkPhysicalDeviceVulkan13Features features13{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };
+		VkPhysicalDeviceFeatures2 device_features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
+		device_features.pNext = &features13;
+
+		vkGetPhysicalDeviceFeatures2(device, &device_features);
+
+		return queue_family_is_complete
 			&& extensions_supported
 			&& swapchain_adequate
-			&& device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+			&& device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
+			&& features13.dynamicRendering; // TODO: make this not hardcoded
 	}
 
 	void vulkan_device_init(VulkanContext& context)
@@ -139,7 +141,24 @@ namespace Nevarea::Renderer {
 
 	void vulkan_device_create_logical_device(VkInstance instance, VkSurfaceKHR surface, DeviceContext* device_context)
 	{
-		QueueFamilyInfo queue_info = find_queue_families(device_context->physical_device, surface);
+		QueueFamilyIndices indices = find_queue_families(device_context->physical_device, surface);
+
+		std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
+		std::set<uint32_t> unique_queue_families = {
+			indices.graphics_family.value(),
+			indices.present_family.value()
+		};
+
+		float queue_priority = 1.0f;
+		for (uint32_t queue_family : unique_queue_families) {
+			VkDeviceQueueCreateInfo queue_create_info{};
+			queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+			queue_create_info.queueFamilyIndex = queue_family;
+			queue_create_info.queueCount = 1;
+			queue_create_info.pQueuePriorities = &queue_priority;
+
+			queue_create_infos.push_back(queue_create_info);
+		}
 
 		VkPhysicalDeviceScalarBlockLayoutFeatures scalar_layout_features{};
 		scalar_layout_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES;
@@ -162,7 +181,7 @@ namespace Nevarea::Renderer {
 		features13.dynamicRendering = VK_TRUE;
 		features13.pNext = &indexing_features;
 
-		// should use vkGetPhysicalDeviceFeatures2 soon.
+		// should use vkGetPhysicalDeviceFeatures2 soon
 		VkPhysicalDeviceFeatures2 device_features{};
 		device_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 		device_features.features.samplerAnisotropy = true;
@@ -173,8 +192,8 @@ namespace Nevarea::Renderer {
 		VkDeviceCreateInfo create_info{};
 		create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 		create_info.pNext = &device_features;
-		create_info.queueCreateInfoCount = 1;
-		create_info.pQueueCreateInfos = &queue_info.create_info;
+		create_info.queueCreateInfoCount = static_cast<uint32_t>(queue_create_infos.size());
+		create_info.pQueueCreateInfos = queue_create_infos.data();
 		create_info.pEnabledFeatures = nullptr;
 		create_info.enabledExtensionCount = static_cast<uint32_t>(device_extensions.size());
 		create_info.ppEnabledExtensionNames = device_extensions.data();
@@ -185,10 +204,10 @@ namespace Nevarea::Renderer {
 		create_info.ppEnabledLayerNames = validation_layers.data();
 		#endif	
 
-		if (vkCreateDevice(device_context->physical_device, &create_info, nullptr, &device_context->device))
+		if (vkCreateDevice(device_context->physical_device, &create_info, nullptr, &device_context->device) != VK_SUCCESS)
 			throw std::runtime_error("Could not create logical device!");
 
-		//vkGetDeviceQueue(device, indices.graphics_family.value(), 0, &graphics_queue);
-		//vkGetDeviceQueue(device, indices.present_family.value(), 0, &present_queue);
+		vkGetDeviceQueue(device_context->device, indices.graphics_family.value(), 0, &device_context->graphics_queue);
+		vkGetDeviceQueue(device_context->device, indices.present_family.value(), 0, &device_context->present_queue);
 	}
 }

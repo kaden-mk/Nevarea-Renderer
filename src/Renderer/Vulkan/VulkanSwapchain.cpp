@@ -142,14 +142,13 @@ namespace Nevarea::Renderer {
 		vkDestroySwapchainKHR(device, swapchain.swapchain, nullptr);
 	}
 
-	void vulkan_frame_sync_init(FrameContext& frame_sync, VkDevice device, uint32_t max_frames_in_flight)
+	void vulkan_frame_sync_init(FrameContext& frame_sync, VkDevice device)
 	{
 		frame_sync.current_frame = 0;
-		frame_sync.max_frames_in_flight = max_frames_in_flight;
 
-		frame_sync.image_available.resize(max_frames_in_flight);
-		frame_sync.render_finished.resize(max_frames_in_flight);
-		frame_sync.in_flight.resize(max_frames_in_flight);
+		frame_sync.image_available.resize(MAX_FRAMES_IN_FLIGHT);
+		frame_sync.render_finished.resize(MAX_FRAMES_IN_FLIGHT);
+		frame_sync.in_flight.resize(MAX_FRAMES_IN_FLIGHT);
 
 		VkSemaphoreCreateInfo semaphore_info{};
 		semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -158,7 +157,7 @@ namespace Nevarea::Renderer {
 		fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 		fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-		for (size_t i = 0; i < max_frames_in_flight; i++) {
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 			if (vkCreateSemaphore(device, &semaphore_info, nullptr, &frame_sync.image_available[i]) != VK_SUCCESS)
 				throw std::runtime_error("Failed to create image_available semaphore!");
 
@@ -172,7 +171,7 @@ namespace Nevarea::Renderer {
 
 	void vulkan_frame_sync_destroy(FrameContext& frame_sync, VkDevice device)
 	{
-		for (size_t i = 0; i < frame_sync.max_frames_in_flight; i++) {
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 			vkDestroySemaphore(device, frame_sync.image_available[i], nullptr);
 			vkDestroySemaphore(device, frame_sync.render_finished[i], nullptr);
 			vkDestroyFence(device, frame_sync.in_flight[i], nullptr);

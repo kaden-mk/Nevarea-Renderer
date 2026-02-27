@@ -25,7 +25,6 @@ namespace Nevarea::Renderer {
         std::vector<VkFence> in_flight;
 
         uint32_t current_frame;
-        uint32_t max_frames_in_flight;
     };
 
     struct SurfaceContext {
@@ -40,6 +39,6 @@ namespace Nevarea::Renderer {
     void vulkan_swapchain_init(VulkanContext& context);
     void vulkan_swapchain_destroy(SwapchainContext swapchain, VkDevice device);
 
-    void vulkan_frame_sync_init(FrameContext& frame_sync, VkDevice device, uint32_t max_frames_in_flight);
+    void vulkan_frame_sync_init(FrameContext& frame_sync, VkDevice device);
     void vulkan_frame_sync_destroy(FrameContext& frame_sync, VkDevice device);
 }

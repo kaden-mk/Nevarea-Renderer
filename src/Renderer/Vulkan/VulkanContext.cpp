@@ -85,7 +85,7 @@ namespace Nevarea::Renderer {
 		vulkan_context_create_surface(context);
 		vulkan_device_init(context);
 		vulkan_swapchain_init(context);
-		vulkan_frame_sync_init(context.frame_sync, context.device.device, MAX_FRAMES_IN_FLIGHT);
+		vulkan_frame_sync_init(context.frame_sync, context.device.device);
 	}
 
 	void vulkan_context_destroy(VulkanContext& context)
