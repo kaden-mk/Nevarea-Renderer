@@ -4,6 +4,10 @@
 #include <vector>
 
 namespace Nevarea::Renderer {
+    struct VulkanContext;
+}
+
+namespace Nevarea::Renderer {
 	struct SwapchainContext {
         VkSwapchainKHR swapchain;
         VkFormat image_format;
@@ -32,5 +36,6 @@ namespace Nevarea::Renderer {
         std::vector<VkPresentModeKHR> supported_present_modes;
     };
 
-    void vulkan_swapchain_init(SwapchainContext& swapchain, VkPhysicalDevice physical_device, SurfaceContext& surface);
+    void query_swapchain_support(VkPhysicalDevice physical_device, SurfaceContext& surface);
+    void vulkan_swapchain_init(VulkanContext& context);
 }

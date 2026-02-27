@@ -84,6 +84,7 @@ namespace Nevarea::Renderer {
 		vulkan_context_debug_messenger(context);
 		vulkan_context_create_surface(context);
 		vulkan_device_init(&context.device, context.instance, context.surface.surface);
+		vulkan_swapchain_init(context);
 	}
 
 	void vulkan_context_destroy(VulkanContext& context)

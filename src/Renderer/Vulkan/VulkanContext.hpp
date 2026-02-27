@@ -9,14 +9,14 @@
 #include "VulkanSwapchain.hpp"
 
 namespace Nevarea::Renderer {
-	// might seperate device stuff into a different struct?
 	struct VulkanContext {
 		VkInstance instance;
 		VkDebugUtilsMessengerEXT debug_messenger;
 		WindowSystemState window;
 
-		GpuDevice device;
+		DeviceContext device;
 		SurfaceContext surface;
+		SwapchainContext swapchain;
 	};
 
 	void vulkan_context_create_instance(VulkanContext& context);

@@ -1,5 +1,6 @@
 #include "VulkanDevice.hpp"
 #include "VulkanSpec.hpp"
+#include "VulkanSwapchain.hpp"
 
 #include <vector>
 #include <iostream>
@@ -62,19 +63,33 @@ namespace Nevarea::Renderer {
 		return required_extensions.empty();
 	}
 
+	static bool is_swapchain_adequate(VkPhysicalDevice device, VkSurfaceKHR surface)
+	{
+		uint32_t format_count = 0;
+		if (vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count, nullptr) != VK_SUCCESS || format_count == 0)
+			return false;
+
+		uint32_t present_mode_count = 0;
+		if (vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &present_mode_count, nullptr) != VK_SUCCESS || present_mode_count == 0)
+			return false;
+
+		VkSurfaceCapabilitiesKHR capabilities;
+		if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &capabilities) != VK_SUCCESS)
+			return false;
+
+		if (capabilities.maxImageCount > 0 && capabilities.minImageCount > capabilities.maxImageCount)
+			return false;
+
+		return true;
+	}
+
 	bool check_device_compatibility(VkPhysicalDevice device, VkSurfaceKHR surface)
 	{
 		VkPhysicalDeviceProperties device_properties;
 		vkGetPhysicalDeviceProperties(device, &device_properties);
 
 		bool extensions_supported = check_device_extension_support(device);
-
-		bool swapchain_adequate = false;
-		if (extensions_supported) {
-			swapchain_adequate = true; // replace with the stuff below once added
-			/*SwapChainSupportDetails swapchain_support = query_swapchain_support(device);
-			swapchain_adequate = !swapchain_support.Formats.empty() && !swapchain_support.PresentModes.empty();*/
-		}
+		bool swapchain_adequate = is_swapchain_adequate(device, surface);
 
 		return find_queue_families(device, surface).index >= 0
 			&& extensions_supported
@@ -82,18 +97,18 @@ namespace Nevarea::Renderer {
 			&& device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 	}
 
-	void vulkan_device_init(DeviceContext* gpu_device, VkInstance instance, VkSurfaceKHR surface)
+	void vulkan_device_init(DeviceContext* device_context, VkInstance instance, VkSurfaceKHR surface)
 	{
-		vulkan_device_pick_physical_device(instance, surface, gpu_device);
-		vulkan_device_create_logical_device(instance, surface, gpu_device);
+		vulkan_device_pick_physical_device(instance, surface, device_context);
+		vulkan_device_create_logical_device(instance, surface, device_context);
 	}
 
-	void vulkan_device_destroy(DeviceContext* gpu_device)
+	void vulkan_device_destroy(DeviceContext* device_context)
 	{
-		vkDestroyDevice(gpu_device->device, nullptr);
+		vkDestroyDevice(device_context->device, nullptr);
 	}
 
-	void vulkan_device_pick_physical_device(VkInstance instance, VkSurfaceKHR surface, DeviceContext* gpu_device)
+	void vulkan_device_pick_physical_device(VkInstance instance, VkSurfaceKHR surface, DeviceContext* device_context)
 	{
 		uint32_t physical_device_count = 0;
 		vkEnumeratePhysicalDevices(instance, &physical_device_count, nullptr);
@@ -104,26 +119,26 @@ namespace Nevarea::Renderer {
 		// TODO: check if the device has the highest amount of memory(?)
 		for (const VkPhysicalDevice device : physical_devices) {
 			if (check_device_compatibility(device, surface)) {
-				gpu_device->physical_device = device;
+				device_context->physical_device = device;
 				break;
 			}
 		}
 
-		if (gpu_device->physical_device == VK_NULL_HANDLE)
+		if (device_context->physical_device == VK_NULL_HANDLE)
 			throw std::runtime_error("Could not find a compatible physical device!");
 
 		// might add these later to the context struct or some shit... maybe have a device struct?
 		VkPhysicalDeviceProperties device_properties;
 		VkPhysicalDeviceFeatures device_features;
-		vkGetPhysicalDeviceProperties(gpu_device->physical_device, &device_properties);
-		vkGetPhysicalDeviceFeatures(gpu_device->physical_device, &device_features);
+		vkGetPhysicalDeviceProperties(device_context->physical_device, &device_properties);
+		vkGetPhysicalDeviceFeatures(device_context->physical_device, &device_features);
 
 		std::cout << "Physical Device Chosen: " << device_properties.deviceName << std::endl;
 	}
 
-	void vulkan_device_create_logical_device(VkInstance instance, VkSurfaceKHR surface, DeviceContext* gpu_device)
+	void vulkan_device_create_logical_device(VkInstance instance, VkSurfaceKHR surface, DeviceContext* device_context)
 	{
-		QueueFamilyInfo queue_info = find_queue_families(gpu_device->physical_device, surface);
+		QueueFamilyInfo queue_info = find_queue_families(device_context->physical_device, surface);
 
 		VkPhysicalDeviceDescriptorIndexingFeatures indexing_features{};
 		indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
@@ -163,10 +178,10 @@ namespace Nevarea::Renderer {
 		create_info.ppEnabledLayerNames = validation_layers.data();
 		#endif	
 
-		if (vkCreateDevice(gpu_device->physical_device, &create_info, nullptr, &gpu_device->device))
+		if (vkCreateDevice(device_context->physical_device, &create_info, nullptr, &device_context->device))
 			throw std::runtime_error("Could not create logical device!");
 
-		/*vkGetDeviceQueue(device, indices.graphics_family.value(), 0, &graphics_queue);
-		vkGetDeviceQueue(device, indices.present_family.value(), 0, &present_queue);*/
+		//vkGetDeviceQueue(device, indices.graphics_family.value(), 0, &graphics_queue);
+		//vkGetDeviceQueue(device, indices.present_family.value(), 0, &present_queue);
 	}
 }
