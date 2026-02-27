@@ -70,9 +70,9 @@ namespace Nevarea::Renderer {
 
 	void vulkan_swapchain_init(VulkanContext& context)
 	{
-		SwapchainContext swapchain = context.swapchain;
-		DeviceContext device = context.device;
-		SurfaceContext surface = context.surface;
+        SwapchainContext& swapchain = context.swapchain;
+		DeviceContext& device = context.device;
+		SurfaceContext& surface = context.surface;
 
 		query_swapchain_support(device.physical_device, surface);
 		if (has_avaliable_swapchain_support(surface) == false)
