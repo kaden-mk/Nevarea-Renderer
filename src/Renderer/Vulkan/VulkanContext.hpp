@@ -17,6 +17,7 @@ namespace Nevarea::Renderer {
 		DeviceContext device;
 		SurfaceContext surface;
 		SwapchainContext swapchain;
+		FrameContext frame_sync;
 	};
 
 	void vulkan_context_create_instance(VulkanContext& context);

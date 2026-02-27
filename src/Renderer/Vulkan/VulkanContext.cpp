@@ -85,11 +85,13 @@ namespace Nevarea::Renderer {
 		vulkan_context_create_surface(context);
 		vulkan_device_init(context);
 		vulkan_swapchain_init(context);
+		vulkan_frame_sync_init(context.frame_sync, context.device.device, MAX_FRAMES_IN_FLIGHT);
 	}
 
 	void vulkan_context_destroy(VulkanContext& context)
 	{
-		vkDestroySwapchainKHR(context.device.device, context.swapchain.swapchain, nullptr);
+		vulkan_frame_sync_destroy(context.frame_sync, context.device.device);
+		vulkan_swapchain_destroy(context.swapchain, context.device.device);
 		vulkan_device_destroy(&context.device);
 
 		#ifdef NEVAREA_DEBUG
