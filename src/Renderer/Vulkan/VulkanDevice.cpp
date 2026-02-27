@@ -1,6 +1,7 @@
 #include "VulkanDevice.hpp"
 #include "VulkanSpec.hpp"
 #include "VulkanSwapchain.hpp"
+#include "VulkanContext.hpp"
 
 #include <vector>
 #include <iostream>
@@ -97,10 +98,10 @@ namespace Nevarea::Renderer {
 			&& device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 	}
 
-	void vulkan_device_init(DeviceContext* device_context, VkInstance instance, VkSurfaceKHR surface)
+	void vulkan_device_init(VulkanContext& context)
 	{
-		vulkan_device_pick_physical_device(instance, surface, device_context);
-		vulkan_device_create_logical_device(instance, surface, device_context);
+		vulkan_device_pick_physical_device(context.instance, context.surface.surface, &context.device);
+		vulkan_device_create_logical_device(context.instance, context.surface.surface, &context.device);
 	}
 
 	void vulkan_device_destroy(DeviceContext* device_context)
@@ -140,9 +141,12 @@ namespace Nevarea::Renderer {
 	{
 		QueueFamilyInfo queue_info = find_queue_families(device_context->physical_device, surface);
 
+		VkPhysicalDeviceScalarBlockLayoutFeatures scalar_layout_features{};
+		scalar_layout_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES;
+		scalar_layout_features.scalarBlockLayout = VK_TRUE;
+
 		VkPhysicalDeviceDescriptorIndexingFeatures indexing_features{};
 		indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
-		indexing_features.pNext = nullptr;
 		indexing_features.runtimeDescriptorArray = true;
 		indexing_features.descriptorBindingPartiallyBound = true;
 		indexing_features.shaderStorageBufferArrayNonUniformIndexing = true;
@@ -151,24 +155,27 @@ namespace Nevarea::Renderer {
 		indexing_features.descriptorBindingStorageBufferUpdateAfterBind = true;
 		indexing_features.descriptorBindingSampledImageUpdateAfterBind = true;
 		indexing_features.descriptorBindingStorageImageUpdateAfterBind = true;
+		indexing_features.pNext = &scalar_layout_features;
 
-		VkPhysicalDeviceScalarBlockLayoutFeatures scalar_layout_features{};
-		scalar_layout_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES;
-		scalar_layout_features.scalarBlockLayout = VK_TRUE;
+		VkPhysicalDeviceVulkan13Features features13{};
+		features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+		features13.dynamicRendering = VK_TRUE;
+		features13.pNext = &indexing_features;
 
+		// should use vkGetPhysicalDeviceFeatures2 soon.
 		VkPhysicalDeviceFeatures2 device_features{};
 		device_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 		device_features.features.samplerAnisotropy = true;
 		device_features.features.vertexPipelineStoresAndAtomics = true;
 		device_features.features.fragmentStoresAndAtomics = true;
-		device_features.pNext = &scalar_layout_features;
+		device_features.pNext = &features13;
 
 		VkDeviceCreateInfo create_info{};
 		create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-		create_info.pNext = &indexing_features;
+		create_info.pNext = &device_features;
 		create_info.queueCreateInfoCount = 1;
 		create_info.pQueueCreateInfos = &queue_info.create_info;
-		create_info.pEnabledFeatures = &device_features.features;
+		create_info.pEnabledFeatures = nullptr;
 		create_info.enabledExtensionCount = static_cast<uint32_t>(device_extensions.size());
 		create_info.ppEnabledExtensionNames = device_extensions.data();
 		create_info.enabledLayerCount = 0;

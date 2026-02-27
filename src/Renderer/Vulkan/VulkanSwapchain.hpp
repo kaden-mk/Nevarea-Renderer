@@ -16,8 +16,6 @@ namespace Nevarea::Renderer {
         std::vector<VkImage> images;
         std::vector<VkImageView> image_views;
         std::vector<VkFramebuffer> framebuffers;
-
-        VkRenderPass render_pass;
 	};
 
     struct FrameContext {
