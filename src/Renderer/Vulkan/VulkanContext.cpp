@@ -4,7 +4,7 @@
 #include "VulkanDebug.hpp"
 #include "VulkanSpec.hpp"
 
-namespace Nevarea {
+namespace Nevarea::Renderer {
 	void vulkan_context_create_instance(VulkanContext& context)
 	{
 		VkApplicationInfo app_info{};

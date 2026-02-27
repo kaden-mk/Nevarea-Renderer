@@ -1,7 +1,7 @@
 #include "VulkanSwapchain.hpp"
 #include <stdexcept>
 
-namespace Nevarea {
+namespace Nevarea::Renderer {
 	struct SwapchainSupport {
 		VkSurfaceCapabilitiesKHR capabilities{};
 		std::vector<VkSurfaceFormatKHR> formats;

@@ -3,7 +3,7 @@
 #include <vulkan/vulkan.h>
 #include <vector>
 
-namespace Nevarea {
+namespace Nevarea::Renderer {
 	struct SwapchainContext {
         VkSwapchainKHR swapchain;
         VkFormat image_format;
@@ -20,5 +20,5 @@ namespace Nevarea {
         VkFence in_flight_fence;
 	};
 
-	void vulkan_swapchain_init(SwapchainContext& swapchain, VkPhysicalDevice physical_device, VkSurfaceKHR surface);
+    void vulkan_swapchain_init(SwapchainContext& swapchain, VkPhysicalDevice physical_device, VkSurfaceKHR surface);
 }

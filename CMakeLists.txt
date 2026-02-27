@@ -1,13 +1,12 @@
-﻿cmake_minimum_required(VERSION 3.8)
-
-project(NevareaRenderer LANGUAGES CXX)
+﻿project(NevareaRenderer LANGUAGES CXX)
 
 add_library(NevareaRenderer STATIC
     src/Platform/WindowSystem.cpp
     src/Renderer/Vulkan/VulkanContext.cpp
     src/Renderer/Vulkan/VulkanDevice.cpp
+    src/Renderer/Vulkan/VulkanSwapchain.cpp
     src/Application/NevareaApplication.cpp
- "src/Renderer/Vulkan/VulkanSwapchain.cpp")
+)
 
 target_compile_definitions(NevareaRenderer PUBLIC NEVAREA_DEBUG)
 
@@ -28,11 +27,8 @@ set_target_properties(NevareaRenderer PROPERTIES
     CXX_STANDARD_REQUIRED ON
 )
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
 if(MSVC)
     target_compile_options(NevareaRenderer PRIVATE /W4 /permissive-)
 else()
     target_compile_options(NevareaRenderer PRIVATE -Wall -Wextra -pedantic)
 endif()
-
-add_subdirectory(Editor)

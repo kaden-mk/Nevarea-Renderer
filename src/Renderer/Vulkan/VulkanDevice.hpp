@@ -3,7 +3,7 @@
 #include <vulkan/vulkan.h>
 #include <optional>
 
-namespace Nevarea {
+namespace Nevarea::Renderer {
 	struct QueueFamilyInfo {
 		int index;
 		VkDeviceQueueCreateInfo create_info;

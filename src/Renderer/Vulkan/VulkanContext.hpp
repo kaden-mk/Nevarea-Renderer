@@ -6,7 +6,7 @@
 
 #include "VulkanDevice.hpp"
 
-namespace Nevarea {
+namespace Nevarea::Renderer {
 	// might seperate device stuff into a different struct?
 	struct VulkanContext {
 		VkInstance instance;

@@ -7,7 +7,7 @@
 namespace Nevarea {
 	struct ApplicationState {
 		WindowSystemState window;
-		VulkanContext vulkan_context;
+		Nevarea::Renderer::VulkanContext vulkan_context;
 		bool running;
 	};
 

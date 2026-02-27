@@ -2,7 +2,7 @@
 
 #include <vulkan/vulkan.h>
 
-namespace Nevarea {
+namespace Nevarea::Renderer {
 	VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger_callback(
 		VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
 		VkDebugUtilsMessageTypeFlagsEXT message_type,

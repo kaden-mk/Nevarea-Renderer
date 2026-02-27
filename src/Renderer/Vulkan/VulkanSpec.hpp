@@ -1,7 +1,7 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 
-namespace Nevarea {
+namespace Nevarea::Renderer {
 	const std::vector<const char*> validation_layers = {
 		"VK_LAYER_KHRONOS_validation"
 	};
