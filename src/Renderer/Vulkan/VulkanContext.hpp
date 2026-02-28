@@ -25,5 +25,6 @@ namespace Nevarea::Renderer {
 	void vulkan_context_create_surface(VulkanContext& context);
 
 	void vulkan_context_init(VulkanContext& context, WindowSystemState* window);
+	void vulkan_context_draw(VulkanContext& context);
 	void vulkan_context_destroy(VulkanContext& context);
 }

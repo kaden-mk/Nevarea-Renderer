@@ -27,6 +27,7 @@ namespace Nevarea {
 	{
 		while (!window_system_should_close(&app->window) && app->running)
 		{
+			vulkan_context_draw(app->vulkan_context);
 			window_system_poll_events();
 		}
 	}

@@ -25,6 +25,9 @@ namespace Nevarea::Renderer {
         std::vector<VkFence> in_flight;
 
         uint32_t current_frame;
+
+        VkCommandPool command_pool;
+        std::vector<VkCommandBuffer> command_buffers;
     };
 
     struct SurfaceContext {
@@ -36,9 +39,11 @@ namespace Nevarea::Renderer {
 
     void query_swapchain_support(VkPhysicalDevice physical_device, SurfaceContext& surface);
 
-    void vulkan_swapchain_init(VulkanContext& context);
+    void vulkan_swapchain_init(VulkanContext& context, VkSwapchainKHR old_swapchain = VK_NULL_HANDLE);
     void vulkan_swapchain_destroy(SwapchainContext swapchain, VkDevice device);
 
-    void vulkan_frame_sync_init(FrameContext& frame_sync, VkDevice device);
+    void vulkan_frame_sync_init(VulkanContext& context);
     void vulkan_frame_sync_destroy(FrameContext& frame_sync, VkDevice device);
+
+    void draw_frame(VulkanContext& context);
 }

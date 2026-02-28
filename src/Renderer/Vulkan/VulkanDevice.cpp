@@ -8,15 +8,6 @@
 #include <set>
 
 namespace Nevarea::Renderer {
-	struct QueueFamilyIndices {
-		std::optional<uint32_t> graphics_family;
-		std::optional<uint32_t> present_family;
-
-		bool is_complete() {
-			return graphics_family.has_value() && present_family.has_value();
-		}
-	};
-
 	QueueFamilyIndices find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface) {
 		QueueFamilyIndices indices;
 
@@ -42,7 +33,7 @@ namespace Nevarea::Renderer {
 		return indices;
 	}
 
-	bool check_device_extension_support(VkPhysicalDevice device)
+	static bool check_device_extension_support(VkPhysicalDevice device)
 	{
 		uint32_t extension_count = 0;
 		vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count, nullptr);
@@ -78,7 +69,7 @@ namespace Nevarea::Renderer {
 		return true;
 	}
 
-	bool check_device_compatibility(VkPhysicalDevice device, VkSurfaceKHR surface)
+	static bool check_device_compatibility(VkPhysicalDevice device, VkSurfaceKHR surface)
 	{
 		VkPhysicalDeviceProperties device_properties;
 		vkGetPhysicalDeviceProperties(device, &device_properties);
@@ -103,7 +94,7 @@ namespace Nevarea::Renderer {
 	void vulkan_device_init(VulkanContext& context)
 	{
 		vulkan_device_pick_physical_device(context.instance, context.surface.surface, &context.device);
-		vulkan_device_create_logical_device(context.instance, context.surface.surface, &context.device);
+		vulkan_device_create_logical_device(context.surface.surface, &context.device);
 	}
 
 	void vulkan_device_destroy(DeviceContext* device_context)
@@ -139,7 +130,7 @@ namespace Nevarea::Renderer {
 		std::cout << "Physical Device Chosen: " << device_properties.deviceName << std::endl;
 	}
 
-	void vulkan_device_create_logical_device(VkInstance instance, VkSurfaceKHR surface, DeviceContext* device_context)
+	void vulkan_device_create_logical_device(VkSurfaceKHR surface, DeviceContext* device_context)
 	{
 		QueueFamilyIndices indices = find_queue_families(device_context->physical_device, surface);
 

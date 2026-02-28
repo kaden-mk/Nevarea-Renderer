@@ -16,9 +16,20 @@ namespace Nevarea::Renderer {
 		VkQueue present_queue;
 	};
 
+	struct QueueFamilyIndices {
+		std::optional<uint32_t> graphics_family;
+		std::optional<uint32_t> present_family;
+
+		bool const is_complete() {
+			return graphics_family.has_value() && present_family.has_value();
+		}
+	};
+
+	QueueFamilyIndices find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface);
+
 	void vulkan_device_init(VulkanContext& context);
 	void vulkan_device_destroy(DeviceContext* device_context);
 
 	void vulkan_device_pick_physical_device(VkInstance instance, VkSurfaceKHR surface, DeviceContext* device_context);
-	void vulkan_device_create_logical_device(VkInstance instance, VkSurfaceKHR surface, DeviceContext* device_context);
+	void vulkan_device_create_logical_device(VkSurfaceKHR surface, DeviceContext* device_context);
 }

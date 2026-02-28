@@ -34,6 +34,11 @@ namespace Nevarea {
 		glfwPollEvents();
 	}
 
+	void window_system_wait_events()
+	{
+		glfwWaitEvents();
+	}
+
 	void window_system_cleanup(WindowSystemState* state)
 	{
 		glfwDestroyWindow(state->window);
