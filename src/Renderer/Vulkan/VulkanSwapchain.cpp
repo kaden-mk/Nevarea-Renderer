@@ -1,6 +1,7 @@
 #include "VulkanSwapchain.hpp"
 #include "VulkanDevice.hpp"
 #include "VulkanContext.hpp"
+#include "Core/InternalState.hpp"
 
 #include <stdexcept>
 #include <iostream>
@@ -166,10 +167,13 @@ namespace Nevarea::Renderer {
 
 	void vulkan_frame_sync_init(VulkanContext& context)
 	{
+		RendererConfig config = Internal::get_renderer_config();
 		FrameContext& frame_sync = context.frame_sync;
 		VkDevice device = context.device.device;
 		VkPhysicalDevice physical_device = context.device.physical_device;
 		VkSurfaceKHR surface = context.surface.surface;
+
+		uint32_t MAX_FRAMES_IN_FLIGHT = config.max_frames_in_flight;
 
 		frame_sync.current_frame = 0;
 
@@ -221,7 +225,7 @@ namespace Nevarea::Renderer {
 
 	void vulkan_frame_sync_destroy(FrameContext& frame_sync, VkDevice device)
 	{
-		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		for (size_t i = 0; i < Internal::get_renderer_config().max_frames_in_flight; i++) {
 			vkDestroySemaphore(device, frame_sync.image_available[i], nullptr);
 			vkDestroySemaphore(device, frame_sync.render_finished[i], nullptr);
 			vkDestroyFence(device, frame_sync.in_flight[i], nullptr);
@@ -279,7 +283,7 @@ namespace Nevarea::Renderer {
 		color_attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		color_attachment.clearValue = { {{0.0f, 0.0f, 1.0f, 1.0f}} };
+		color_attachment.clearValue = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
 
 		VkRenderingInfo rendering_info{};
 		rendering_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
@@ -301,7 +305,7 @@ namespace Nevarea::Renderer {
 		end_barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		end_barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 		end_barrier.image = swapchain.images[image_index];
-		end_barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 0, 1 };
+		end_barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
 
 		vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 			VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
@@ -343,6 +347,6 @@ namespace Nevarea::Renderer {
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
 			recreate_swapchain(context);
 
-		frame.current_frame = (frame.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
+		frame.current_frame = (frame.current_frame + 1) % Internal::get_renderer_config().max_frames_in_flight;
 	}
 }

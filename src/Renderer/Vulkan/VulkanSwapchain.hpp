@@ -8,8 +8,6 @@ namespace Nevarea::Renderer {
 }
 
 namespace Nevarea::Renderer {
-    static const uint32_t MAX_FRAMES_IN_FLIGHT = 2;
-
 	struct SwapchainContext {
         VkSwapchainKHR swapchain;
         VkFormat image_format;

@@ -4,10 +4,10 @@
 
 namespace Nevarea::Renderer {
 	VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger_callback(
-		VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
-		VkDebugUtilsMessageTypeFlagsEXT message_type,
+		[[maybe_unused]] VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
+		[[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT message_type,
 		const VkDebugUtilsMessengerCallbackDataEXT* callback_data,
-		void* user_data
+		[[maybe_unused]] void* user_data
 	) {
 		std::cerr << "\nvalidation layer: " << (callback_data ? callback_data->pMessage : "null") << std::endl;
 		return VK_FALSE;

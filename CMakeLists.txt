@@ -5,22 +5,25 @@ add_library(NevareaRenderer STATIC
     src/Renderer/Vulkan/VulkanContext.cpp
     src/Renderer/Vulkan/VulkanDevice.cpp
     src/Renderer/Vulkan/VulkanSwapchain.cpp
-    src/Application/NevareaApplication.cpp
+    src/Application/Application.cpp
+    src/Core/Config.cpp
 )
 
 target_compile_definitions(NevareaRenderer PUBLIC NEVAREA_DEBUG)
 
+target_include_directories(NevareaRenderer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
 target_include_directories(NevareaRenderer
-    PUBLIC
+    PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_CURRENT_SOURCE_DIR}/external
 )
 
 add_subdirectory(external/glfw)
-target_link_libraries(NevareaRenderer PUBLIC glfw)
+target_link_libraries(NevareaRenderer PRIVATE glfw)
 
 find_package(Vulkan REQUIRED)
-target_link_libraries(NevareaRenderer PUBLIC Vulkan::Vulkan)
+target_link_libraries(NevareaRenderer PRIVATE Vulkan::Vulkan)
 
 set_target_properties(NevareaRenderer PROPERTIES
     CXX_STANDARD 20

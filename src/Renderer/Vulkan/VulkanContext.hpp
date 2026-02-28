@@ -12,8 +12,8 @@ namespace Nevarea::Renderer {
 	struct VulkanContext {
 		VkInstance instance;
 		VkDebugUtilsMessengerEXT debug_messenger;
-		WindowSystemState window;
 
+		WindowSystemState window;
 		DeviceContext device;
 		SurfaceContext surface;
 		SwapchainContext swapchain;
