@@ -1,6 +1,4 @@
 #include "VulkanSwapchain.hpp"
-#include "VulkanDevice.hpp"
-#include "VulkanContext.hpp"
 #include "Core/InternalState.hpp"
 
 #include <stdexcept>
@@ -69,12 +67,9 @@ namespace Nevarea::Renderer {
 		return VK_PRESENT_MODE_FIFO_KHR;
 	}
 
-	static VkExtent2D wait_for_valid_extent(VulkanContext& context) {
-		DeviceContext& device = context.device;
-		SurfaceContext& surface = context.surface;
-
+	static VkExtent2D wait_for_valid_extent(WindowSystemState* window, DeviceContext& device, SurfaceContext& surface) {
 		while (true) {
-			auto extent = context.window.get_extent();
+			auto extent = window->get_extent();
 			if (extent.width == 0 || extent.height == 0) {
 				window_system_wait_events();
 				continue;
@@ -92,13 +87,28 @@ namespace Nevarea::Renderer {
 		}
 	}
 
-	void vulkan_swapchain_init(VulkanContext& context, VkSwapchainKHR old_swapchain)
-	{
-		SwapchainContext& swapchain = context.swapchain;
-		DeviceContext& device = context.device;
-		SurfaceContext& surface = context.surface;
+	void vulkan_swapchain_image_views(SwapchainContext& swapchain, VkDevice device) {
+		swapchain.image_views.resize(swapchain.images.size());
+		for (size_t i = 0; i < swapchain.images.size(); i++) {
+			VkImageViewCreateInfo view_info{};
+			view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+			view_info.image = swapchain.images[i];
+			view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+			view_info.format = swapchain.image_format;
+			view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			view_info.subresourceRange.baseMipLevel = 0;
+			view_info.subresourceRange.levelCount = 1;
+			view_info.subresourceRange.baseArrayLayer = 0;
+			view_info.subresourceRange.layerCount = 1;
 
-		VkExtent2D swapchain_extent = wait_for_valid_extent(context);
+			if (vkCreateImageView(device, &view_info, nullptr, &swapchain.image_views[i]) != VK_SUCCESS)
+				throw std::runtime_error("failed to create texture image view!");
+		}
+	}
+
+	void vulkan_swapchain_init(SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowSystemState* window, VkSwapchainKHR old_swapchain)
+	{
+		VkExtent2D swapchain_extent = wait_for_valid_extent(window, device, surface);
 		VkSurfaceFormatKHR surface_format = choose_surface_format(surface.supported_formats);
 		VkPresentModeKHR swapchain_present_mode = choose_swapchain_present_mode(surface.supported_present_modes);
 
@@ -125,7 +135,7 @@ namespace Nevarea::Renderer {
 		create_info.clipped = VK_TRUE;
 		create_info.oldSwapchain = old_swapchain;
 
-		if (vkCreateSwapchainKHR(device.device, &create_info, nullptr, &context.swapchain.swapchain) != VK_SUCCESS)
+		if (vkCreateSwapchainKHR(device.device, &create_info, nullptr, &swapchain.swapchain) != VK_SUCCESS)
 			throw std::runtime_error("VkSwapchainKHR could not be created!");
 
 		if (old_swapchain != VK_NULL_HANDLE)
@@ -139,35 +149,19 @@ namespace Nevarea::Renderer {
 		swapchain.images.resize(swapchain_image_count);
 		vkGetSwapchainImagesKHR(device.device, swapchain.swapchain, &swapchain_image_count, swapchain.images.data());
 
-		// this might need to be a function?
-		swapchain.image_views.resize(swapchain.images.size());
-		for (size_t i = 0; i < swapchain.images.size(); i++) {
-			VkImageViewCreateInfo view_info{};
-			view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-			view_info.image = swapchain.images[i];
-			view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-			view_info.format = swapchain.image_format;
-			view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			view_info.subresourceRange.baseMipLevel = 0;
-			view_info.subresourceRange.levelCount = 1;
-			view_info.subresourceRange.baseArrayLayer = 0;
-			view_info.subresourceRange.layerCount = 1;
-
-			if (vkCreateImageView(device.device, &view_info, nullptr, &swapchain.image_views[i]) != VK_SUCCESS)
-				throw std::runtime_error("failed to create texture image view!");
-		}
+		vulkan_swapchain_image_views(swapchain, device.device);
 	}
 
-	void recreate_swapchain(VulkanContext& context) {
-		vkDeviceWaitIdle(context.device.device);
+	void recreate_swapchain(SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowSystemState* window) {
+		vkDeviceWaitIdle(device.device);
 
-		for (auto imageView : context.swapchain.image_views)
-			vkDestroyImageView(context.device.device, imageView, nullptr);
+		for (auto imageView : swapchain.image_views)
+			vkDestroyImageView(device.device, imageView, nullptr);
 
-		context.swapchain.image_views.clear();
+		swapchain.image_views.clear();
 		
-		VkSwapchainKHR old_handle = context.swapchain.swapchain;
-		vulkan_swapchain_init(context, old_handle);
+		VkSwapchainKHR old_handle = swapchain.swapchain;
+		vulkan_swapchain_init(swapchain, device, surface, window, old_handle);
 	}
 
 	void vulkan_swapchain_destroy(const SwapchainContext swapchain, VkDevice device) {
@@ -177,13 +171,12 @@ namespace Nevarea::Renderer {
 		vkDestroySwapchainKHR(device, swapchain.swapchain, nullptr);
 	}
 
-	void vulkan_frame_sync_init(VulkanContext& context)
+	void vulkan_frame_sync_init(FrameContext& frame_sync, DeviceContext& device_context, SurfaceContext& surface_context)
 	{
 		RendererConfig config = Internal::get_renderer_config();
-		FrameContext& frame_sync = context.frame_sync;
-		VkDevice device = context.device.device;
-		VkPhysicalDevice physical_device = context.device.physical_device;
-		VkSurfaceKHR surface = context.surface.surface;
+		VkDevice device = device_context.device;
+		VkPhysicalDevice physical_device = device_context.physical_device;
+		VkSurfaceKHR surface = surface_context.surface;
 
 		uint32_t MAX_FRAMES_IN_FLIGHT = config.max_frames_in_flight;
 

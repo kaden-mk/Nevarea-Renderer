@@ -1,8 +1,8 @@
 #pragma once
 
-#include "VulkanContext.hpp"
+#include "VulkanSwapchain.hpp"
 
 namespace Nevarea::Renderer {
-	VkCommandBuffer begin_frame_rendering(VulkanContext& context);
-	void end_frame_rendering(VulkanContext& context, VkCommandBuffer cmd);
+	VkCommandBuffer begin_frame_rendering(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowSystemState* window);
+	void end_frame_rendering(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowSystemState* window, VkCommandBuffer cmd);
 }

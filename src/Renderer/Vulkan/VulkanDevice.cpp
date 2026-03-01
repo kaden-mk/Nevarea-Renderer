@@ -1,7 +1,6 @@
 #include "VulkanDevice.hpp"
 #include "VulkanSpec.hpp"
 #include "VulkanSwapchain.hpp"
-#include "VulkanContext.hpp"
 
 #include <vector>
 #include <iostream>
@@ -91,10 +90,10 @@ namespace Nevarea::Renderer {
 			&& features13.dynamicRendering; // TODO: make this not hardcoded
 	}
 
-	void vulkan_device_init(VulkanContext& context)
+	void vulkan_device_init(DeviceContext& device_context, VkInstance instance, VkSurfaceKHR surface)
 	{
-		vulkan_device_pick_physical_device(context.instance, context.surface.surface, &context.device);
-		vulkan_device_create_logical_device(context.surface.surface, &context.device);
+		vulkan_device_pick_physical_device(instance, surface, &device_context);
+		vulkan_device_create_logical_device(surface, &device_context);
 	}
 
 	void vulkan_device_destroy(DeviceContext* device_context)

@@ -4,10 +4,6 @@
 #include <optional>
 
 namespace Nevarea::Renderer {
-	struct VulkanContext;
-}
-
-namespace Nevarea::Renderer {
 	struct DeviceContext {
 		VkPhysicalDevice physical_device;
 		VkDevice device;
@@ -20,14 +16,14 @@ namespace Nevarea::Renderer {
 		std::optional<uint32_t> graphics_family;
 		std::optional<uint32_t> present_family;
 
-		bool const is_complete() {
+		bool is_complete() const {
 			return graphics_family.has_value() && present_family.has_value();
 		}
 	};
 
 	QueueFamilyIndices find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface);
 
-	void vulkan_device_init(VulkanContext& context);
+	void vulkan_device_init(DeviceContext& device_context, VkInstance instance, VkSurfaceKHR surface);
 	void vulkan_device_destroy(DeviceContext* device_context);
 
 	void vulkan_device_pick_physical_device(VkInstance instance, VkSurfaceKHR surface, DeviceContext* device_context);

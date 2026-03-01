@@ -1,24 +1,21 @@
+#include <vulkan/vulkan.h>
+
 #include "VulkanFrames.hpp"
-#include "VulkanSwapchain.hpp"
 #include "Core/InternalState.hpp"
 
 namespace Nevarea::Renderer {
-	VkCommandBuffer prepare_command_buffer(VulkanContext& context) {
-		FrameContext& frame = context.frame_sync;
-		SwapchainContext& swapchain = context.swapchain;
-		VkDevice device = context.device.device;
+	VkCommandBuffer prepare_command_buffer(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowSystemState* window) {
+		vkWaitForFences(device.device, 1, &frame.in_flight[frame.current_frame], VK_TRUE, UINT64_MAX);
 
-		vkWaitForFences(device, 1, &frame.in_flight[frame.current_frame], VK_TRUE, UINT64_MAX);
-
-		VkResult result = vkAcquireNextImageKHR(device, swapchain.swapchain, UINT64_MAX,
+		VkResult result = vkAcquireNextImageKHR(device.device, swapchain.swapchain, UINT64_MAX,
 			frame.image_available[frame.current_frame], VK_NULL_HANDLE, &swapchain.current_image_index);
 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-			recreate_swapchain(context);
+			recreate_swapchain(swapchain, device, surface, window);
 			return VK_NULL_HANDLE;
 		}
 
-		vkResetFences(device, 1, &frame.in_flight[frame.current_frame]);
+		vkResetFences(device.device, 1, &frame.in_flight[frame.current_frame]);
 
 		VkCommandBuffer cmd = frame.command_buffers[frame.current_frame];
 		if (cmd == VK_NULL_HANDLE)
@@ -29,11 +26,8 @@ namespace Nevarea::Renderer {
 		return cmd;
 	}
 
-	VkCommandBuffer begin_frame_rendering(VulkanContext& context) {
-		FrameContext& frame = context.frame_sync;
-		SwapchainContext& swapchain = context.swapchain;
-
-		VkCommandBuffer cmd = prepare_command_buffer(context);
+	VkCommandBuffer begin_frame_rendering(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowSystemState* window) {
+		VkCommandBuffer cmd = prepare_command_buffer(frame, swapchain, device, surface, window);
 		if (cmd == VK_NULL_HANDLE) return VK_NULL_HANDLE;
 
 		VkCommandBufferBeginInfo begin_info{};
@@ -73,10 +67,7 @@ namespace Nevarea::Renderer {
 		return cmd;
 	}
 
-	void handle_queues(VulkanContext& context, VkCommandBuffer cmd) {
-		FrameContext& frame = context.frame_sync;
-		SwapchainContext& swapchain = context.swapchain;
-
+	void handle_queues(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowSystemState* window, VkCommandBuffer cmd) {
 		VkSubmitInfo submit_info{};
 		submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
@@ -94,7 +85,7 @@ namespace Nevarea::Renderer {
 		submit_info.signalSemaphoreCount = 1;
 		submit_info.pSignalSemaphores = signal_semaphores;
 
-		vkQueueSubmit(context.device.graphics_queue, 1, &submit_info, frame.in_flight[frame.current_frame]);
+		vkQueueSubmit(device.graphics_queue, 1, &submit_info, frame.in_flight[frame.current_frame]);
 
 		VkPresentInfoKHR present_info{};
 		present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -106,17 +97,14 @@ namespace Nevarea::Renderer {
 		present_info.pSwapchains = swapchains;
 		present_info.pImageIndices = &swapchain.current_image_index;
 
-		VkResult result = vkQueuePresentKHR(context.device.present_queue, &present_info);
+		VkResult result = vkQueuePresentKHR(device.present_queue, &present_info);
 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
-			recreate_swapchain(context);
+			recreate_swapchain(swapchain, device, surface, window);
 	}
 
-	void end_frame_rendering(VulkanContext& context, VkCommandBuffer cmd)
+	void end_frame_rendering(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowSystemState* window, VkCommandBuffer cmd)
 	{
-		FrameContext& frame = context.frame_sync;
-		SwapchainContext& swapchain = context.swapchain;
-
 		vkCmdEndRendering(cmd);
 
 		VkImageMemoryBarrier end_barrier{};
@@ -134,7 +122,7 @@ namespace Nevarea::Renderer {
 
 		vkEndCommandBuffer(cmd);
 
-		handle_queues(context, cmd);
+		handle_queues(frame, swapchain, device, surface, window, cmd);
 
 		frame.current_frame = (frame.current_frame + 1) % Internal::get_renderer_config().max_frames_in_flight;
 	}
