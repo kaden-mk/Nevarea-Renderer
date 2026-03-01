@@ -69,18 +69,37 @@ namespace Nevarea::Renderer {
 		return VK_PRESENT_MODE_FIFO_KHR;
 	}
 
-	void vulkan_swapchain_init(VulkanContext& context, VkSwapchainKHR old_swapchain)
-	{
-        SwapchainContext& swapchain = context.swapchain;
+	static VkExtent2D wait_for_valid_extent(VulkanContext& context) {
 		DeviceContext& device = context.device;
 		SurfaceContext& surface = context.surface;
 
-		query_swapchain_support(device.physical_device, surface);
-		if (has_avaliable_swapchain_support(surface) == false)
-			throw std::runtime_error("No avaliable swapchain support!");
+		while (true) {
+			auto extent = context.window.get_extent();
+			if (extent.width == 0 || extent.height == 0) {
+				window_system_wait_events();
+				continue;
+			}
 
+			query_swapchain_support(device.physical_device, surface);
+			if (!has_avaliable_swapchain_support(surface))
+				throw std::runtime_error("No avaliable swapchain support!");
+
+			VkExtent2D swapchain_extent = choose_swapchain_extent(surface.capabilities, extent);
+			if (swapchain_extent.width > 0 && swapchain_extent.height > 0)
+				return swapchain_extent;
+
+			window_system_wait_events();
+		}
+	}
+
+	void vulkan_swapchain_init(VulkanContext& context, VkSwapchainKHR old_swapchain)
+	{
+		SwapchainContext& swapchain = context.swapchain;
+		DeviceContext& device = context.device;
+		SurfaceContext& surface = context.surface;
+
+		VkExtent2D swapchain_extent = wait_for_valid_extent(context);
 		VkSurfaceFormatKHR surface_format = choose_surface_format(surface.supported_formats);
-		VkExtent2D swapchain_extent = choose_swapchain_extent(surface.capabilities, context.window.get_extent());
 		VkPresentModeKHR swapchain_present_mode = choose_swapchain_present_mode(surface.supported_present_modes);
 
 		VkSwapchainCreateInfoKHR create_info{};
@@ -139,14 +158,7 @@ namespace Nevarea::Renderer {
 		}
 	}
 
-	static void recreate_swapchain(VulkanContext& context) {
-		auto extent = context.window.get_extent();
-		
-		while (extent.width == 0 || extent.height == 0) {
-			extent = context.window.get_extent();
-			window_system_wait_events();
-		}
-
+	void recreate_swapchain(VulkanContext& context) {
 		vkDeviceWaitIdle(context.device.device);
 
 		for (auto imageView : context.swapchain.image_views)
@@ -235,118 +247,5 @@ namespace Nevarea::Renderer {
 			vkDestroyCommandPool(device, frame_sync.command_pool, nullptr);
 			frame_sync.command_pool = VK_NULL_HANDLE;
 		}
-	}
-
-	void draw_frame(VulkanContext& context)
-	{
-		FrameContext& frame = context.frame_sync;
-		SwapchainContext& swapchain = context.swapchain;
-
-		vkWaitForFences(context.device.device, 1, &frame.in_flight[frame.current_frame], VK_TRUE, UINT64_MAX);
-
-		uint32_t image_index;
-		VkResult result = vkAcquireNextImageKHR(context.device.device, context.swapchain.swapchain, UINT64_MAX, frame.image_available[frame.current_frame], VK_NULL_HANDLE, &image_index);
-
-		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-			recreate_swapchain(context);
-			return;
-		}
-
-		vkResetFences(context.device.device, 1, &frame.in_flight[frame.current_frame]);
-
-		VkCommandBuffer& cmd = frame.command_buffers[frame.current_frame];
-		if (cmd == VK_NULL_HANDLE)
-			throw std::runtime_error("Drawing Command buffer is NULL!");
-
-		vkResetCommandBuffer(cmd, 0);
-
-		VkCommandBufferBeginInfo begin_info{};
-		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		vkBeginCommandBuffer(cmd, &begin_info);
-
-		VkImageMemoryBarrier begin_barrier{};
-		begin_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		begin_barrier.srcAccessMask = 0;
-		begin_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		begin_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		begin_barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		begin_barrier.image = swapchain.images[image_index];
-		begin_barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-
-		vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-			0, 0, nullptr, 0, nullptr, 1, &begin_barrier);
-
-		VkRenderingAttachmentInfo color_attachment{};
-		color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-		color_attachment.imageView = context.swapchain.image_views[image_index];
-		color_attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		color_attachment.clearValue = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
-
-		VkRenderingInfo rendering_info{};
-		rendering_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-		rendering_info.renderArea = { {0, 0}, context.swapchain.extent };
-		rendering_info.layerCount = 1;
-		rendering_info.colorAttachmentCount = 1;
-		rendering_info.pColorAttachments = &color_attachment;
-
-		vkCmdBeginRendering(cmd, &rendering_info);
-
-		// draw commands
-
-		vkCmdEndRendering(cmd);
-
-		VkImageMemoryBarrier end_barrier{};
-		end_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		end_barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		end_barrier.dstAccessMask = 0;
-		end_barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		end_barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		end_barrier.image = swapchain.images[image_index];
-		end_barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-
-		vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-			VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-			0, 0, nullptr, 0, nullptr, 1, &end_barrier);
-
-		vkEndCommandBuffer(cmd);
-
-		VkSubmitInfo submit_info{};
-		submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-		VkSemaphore wait_semaphores[] = { frame.image_available[frame.current_frame] };
-		VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-
-		submit_info.waitSemaphoreCount = 1;
-		submit_info.pWaitSemaphores = wait_semaphores;
-		submit_info.pWaitDstStageMask = wait_stages;
-		submit_info.commandBufferCount = 1;
-		submit_info.pCommandBuffers = &cmd;
-
-		VkSemaphore signal_semaphores[] = { frame.render_finished[frame.current_frame] };
-
-		submit_info.signalSemaphoreCount = 1;
-		submit_info.pSignalSemaphores = signal_semaphores;
-
-		vkQueueSubmit(context.device.graphics_queue, 1, &submit_info, frame.in_flight[frame.current_frame]);
-
-		VkPresentInfoKHR present_info{};
-		present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-		present_info.waitSemaphoreCount = 1;
-		present_info.pWaitSemaphores = signal_semaphores;
-
-		VkSwapchainKHR swapchains[] = { context.swapchain.swapchain };
-		present_info.swapchainCount = 1;
-		present_info.pSwapchains = swapchains;
-		present_info.pImageIndices = &image_index;
-
-		result = vkQueuePresentKHR(context.device.present_queue, &present_info);
-
-		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
-			recreate_swapchain(context);
-
-		frame.current_frame = (frame.current_frame + 1) % Internal::get_renderer_config().max_frames_in_flight;
 	}
 }

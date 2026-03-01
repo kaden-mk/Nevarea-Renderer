@@ -7,7 +7,7 @@ add_library(NevareaRenderer STATIC
     src/Renderer/Vulkan/VulkanSwapchain.cpp
     src/Application/Application.cpp
     src/Core/Config.cpp
-)
+ "src/Renderer/Vulkan/VulkanFrames.cpp")
 
 target_compile_definitions(NevareaRenderer PUBLIC NEVAREA_DEBUG)
 

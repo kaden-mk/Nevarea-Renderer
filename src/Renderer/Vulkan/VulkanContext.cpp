@@ -3,6 +3,7 @@
 #include "VulkanContext.hpp"
 #include "VulkanDebug.hpp"
 #include "VulkanSpec.hpp"
+#include "VulkanFrames.hpp"
 
 namespace Nevarea::Renderer {
 	void vulkan_context_create_instance(VulkanContext& context)
@@ -89,7 +90,11 @@ namespace Nevarea::Renderer {
 	}
 
 	void vulkan_context_draw(VulkanContext& context) {
-		draw_frame(context);
+		if (VkCommandBuffer cmd = begin_frame_rendering(context); cmd != VK_NULL_HANDLE) {
+			// drawing stuff here
+
+			end_frame_rendering(context, cmd);
+		}
 	}
 
 	void vulkan_context_destroy(VulkanContext& context)
