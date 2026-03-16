@@ -1,7 +1,6 @@
 #pragma once
 
-#include <iostream>
-#include <Nevarea/Config.hpp>
+#include "Config.hpp"
 
 namespace Nevarea {
 	struct ApplicationState;

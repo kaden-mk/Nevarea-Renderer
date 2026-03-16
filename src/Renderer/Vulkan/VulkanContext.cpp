@@ -1,12 +1,13 @@
-#include <vector>
-
 #include "VulkanContext.hpp"
 #include "VulkanDebug.hpp"
 #include "VulkanSpec.hpp"
 #include "VulkanFrames.hpp"
 
+#include "Core/InternalState.hpp"
+#include "Core/n_pch.hpp"
+
 namespace Nevarea::Renderer {
-	void vulkan_context_create_instance(VkInstance& instance)
+	static void vulkan_context_create_instance(VkInstance& instance)
 	{
 		VkApplicationInfo app_info{};
 		app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -31,7 +32,6 @@ namespace Nevarea::Renderer {
 		uint32_t glfw_extension_count = 0;
 		const char** glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
 
-		// ??? (is this needed??)
 		std::vector<const char*> combined_extensions(glfw_extensions, glfw_extensions + glfw_extension_count);
 		combined_extensions.insert(combined_extensions.end(), instance_extensions.begin(), instance_extensions.end());
 
@@ -51,12 +51,11 @@ namespace Nevarea::Renderer {
 		instance_create_info.pNext = &debug_create_info;
 		#endif
 
-		VkResult instance_result = vkCreateInstance(&instance_create_info, nullptr, &instance);
-		if (instance_result != VK_SUCCESS)
-			throw std::runtime_error("VkInstance could not be created!");
+		NEVAREA_ASSERT(vkCreateInstance(&instance_create_info, nullptr, &instance) == VK_SUCCESS,
+			"VULKAN CONTEXT", "VkInstance could not be created!");
 	}
 
-	void vulkan_context_debug_messenger(VkInstance instance, VkDebugUtilsMessengerEXT& debug_messenger)
+	static void vulkan_context_debug_messenger(VkInstance instance, VkDebugUtilsMessengerEXT& debug_messenger)
 	{
 		#ifdef NEVAREA_DEBUG
 		bool debug = true;
@@ -69,31 +68,31 @@ namespace Nevarea::Renderer {
 		VkDebugUtilsMessengerCreateInfoEXT create_info{};
 		populate_debug_create_info(create_info);
 		
-		if (create_debug_utils_messenger_ext(instance, &create_info, nullptr, &debug_messenger) != VK_SUCCESS)
-			throw std::runtime_error("failed to set up debug messenger!");
+		NEVAREA_ASSERT(create_debug_utils_messenger_ext(instance, &create_info, nullptr, &debug_messenger) == VK_SUCCESS,
+			"VULKAN DEBUG CONTEXT", "Debug Messenger could not be setup!");
 	}
 
-	void vulkan_context_create_surface(WindowSystemState* window, VkInstance instance, VkSurfaceKHR& surface)
+	static void vulkan_context_create_surface(WindowSystemState* window, VkInstance instance, VkSurfaceKHR& surface)
 	{
 		window_system_create_surface(window, instance, &surface);
 	}
 
 	void vulkan_context_init(VulkanContext& context, WindowSystemState* window) {
-		context.window = *window;
+		context.window = window;
 
 		vulkan_context_create_instance(context.instance);
 		vulkan_context_debug_messenger(context.instance, context.debug_messenger);
-		vulkan_context_create_surface(&context.window, context.instance, context.surface.surface);
+		vulkan_context_create_surface(context.window, context.instance, context.surface.surface);
 		vulkan_device_init(context.device, context.instance, context.surface.surface);
-		vulkan_swapchain_init(context.swapchain, context.device, context.surface, &context.window);
+		vulkan_swapchain_init(context.swapchain, context.device, context.surface, context.window);
 		vulkan_frame_sync_init(context.frame_sync, context.device, context.surface);
 	}
 
 	void vulkan_context_draw(VulkanContext& context) {
-		if (VkCommandBuffer cmd = begin_frame_rendering(context.frame_sync, context.swapchain, context.device, context.surface, &context.window); cmd != VK_NULL_HANDLE) {
+		if (VkCommandBuffer cmd = begin_frame_rendering(context.frame_sync, context.swapchain, context.device, context.surface, context.window); cmd != VK_NULL_HANDLE) {
 			// drawing stuff here
 
-			end_frame_rendering(context.frame_sync, context.swapchain, context.device, context.surface, &context.window, cmd);
+			end_frame_rendering(context.frame_sync, context.swapchain, context.device, context.surface, context.window, cmd);
 		}
 	}
 

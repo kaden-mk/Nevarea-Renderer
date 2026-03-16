@@ -1,10 +1,14 @@
 #include "WindowSystem.hpp"
 
+#include "Core/InternalState.hpp"
+
 #include <vulkan/vulkan.h>
 
 namespace Nevarea {
 	bool window_system_init(WindowSystemState* state, uint32_t width, uint32_t height, const char* title)
 	{
+		NEVAREA_ASSERT(state != nullptr, "WINDOW SYSTEM", "Sent in state is nullptr, cannot be accessed.");
+
 		if (!glfwInit())
 			return false;
 

@@ -2,10 +2,6 @@
 #include "VulkanSpec.hpp"
 #include "VulkanSwapchain.hpp"
 
-#include <vector>
-#include <iostream>
-#include <set>
-
 namespace Nevarea::Renderer {
 	QueueFamilyIndices find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface) {
 		QueueFamilyIndices indices;
@@ -117,10 +113,9 @@ namespace Nevarea::Renderer {
 			}
 		}
 
-		if (device_context->physical_device == VK_NULL_HANDLE)
-			throw std::runtime_error("Could not find a compatible physical device!");
+		NEVAREA_ASSERT(device_context->physical_device != VK_NULL_HANDLE,
+			"VULKAN DEVICE", "Could not find a compatible physical device!");
 
-		// might add these later to the context struct or some shit... maybe have a device struct?
 		VkPhysicalDeviceProperties device_properties;
 		VkPhysicalDeviceFeatures device_features;
 		vkGetPhysicalDeviceProperties(device_context->physical_device, &device_properties);
@@ -192,10 +187,10 @@ namespace Nevarea::Renderer {
 		#ifdef NEVAREA_DEBUG
 		create_info.enabledLayerCount = static_cast<uint32_t>(validation_layers.size());
 		create_info.ppEnabledLayerNames = validation_layers.data();
-		#endif	
+		#endif
 
-		if (vkCreateDevice(device_context->physical_device, &create_info, nullptr, &device_context->device) != VK_SUCCESS)
-			throw std::runtime_error("Could not create logical device!");
+		NEVAREA_ASSERT(vkCreateDevice(device_context->physical_device, &create_info, nullptr, &device_context->device) == VK_SUCCESS,
+			"VULKAN DEVICE", "Could not create logical device!")
 
 		vkGetDeviceQueue(device_context->device, indices.graphics_family.value(), 0, &device_context->graphics_queue);
 		vkGetDeviceQueue(device_context->device, indices.present_family.value(), 0, &device_context->present_queue);

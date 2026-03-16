@@ -1,4 +1,5 @@
-﻿project(NevareaRenderer LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.10)
+project(NevareaRenderer LANGUAGES CXX)
 
 add_library(NevareaRenderer STATIC
     src/Platform/WindowSystem.cpp
@@ -7,9 +8,16 @@ add_library(NevareaRenderer STATIC
     src/Renderer/Vulkan/VulkanSwapchain.cpp
     src/Application/Application.cpp
     src/Core/Config.cpp
- "src/Renderer/Vulkan/VulkanFrames.cpp")
+    src/Renderer/Vulkan/VulkanFrames.cpp
+)
 
-target_compile_definitions(NevareaRenderer PUBLIC NEVAREA_DEBUG)
+ target_precompile_headers(NevareaRenderer PRIVATE
+    src/Core/n_pch.hpp
+)
+
+target_compile_definitions(NevareaRenderer PUBLIC
+    NEVAREA_DEBUG
+)
 
 target_include_directories(NevareaRenderer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 

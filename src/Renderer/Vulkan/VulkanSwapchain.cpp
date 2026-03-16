@@ -1,14 +1,11 @@
 #include "VulkanSwapchain.hpp"
-#include "Core/InternalState.hpp"
 
-#include <stdexcept>
-#include <iostream>
+#include "Core/n_pch.hpp"
 
 namespace Nevarea::Renderer {
 	void query_swapchain_support(VkPhysicalDevice physical_device, SurfaceContext& surface) {
 		VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface.surface, &surface.capabilities);
-		if (result != VK_SUCCESS)
-			throw std::runtime_error("Could not get physical device surface capabilities!");
+		NEVAREA_ASSERT(result == VK_SUCCESS, "VULKAN SWAPCHAIN", "Could not get physical device surface capabilities!");
 
 		uint32_t format_count = 0;
 		vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface.surface, &format_count, nullptr);
@@ -24,8 +21,6 @@ namespace Nevarea::Renderer {
 			vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface.surface, &present_mode_count, surface.supported_present_modes.data());
 		}
 	}
-
-	static bool has_avaliable_swapchain_support(SurfaceContext surface) { return !surface.supported_formats.empty() && !surface.supported_present_modes.empty(); }
 
 	static VkSurfaceFormatKHR choose_surface_format(std::vector<VkSurfaceFormatKHR> surface_formats) {
 		for (const auto& format : surface_formats) {
@@ -76,8 +71,7 @@ namespace Nevarea::Renderer {
 			}
 
 			query_swapchain_support(device.physical_device, surface);
-			if (!has_avaliable_swapchain_support(surface))
-				throw std::runtime_error("No avaliable swapchain support!");
+			NEVAREA_ASSERT(has_available_swapchain_support(surface), "VULKAN SWAPCHAIN", "No available swapchain support!");
 
 			VkExtent2D swapchain_extent = choose_swapchain_extent(surface.capabilities, extent);
 			if (swapchain_extent.width > 0 && swapchain_extent.height > 0)
@@ -87,7 +81,7 @@ namespace Nevarea::Renderer {
 		}
 	}
 
-	void vulkan_swapchain_image_views(SwapchainContext& swapchain, VkDevice device) {
+	static void vulkan_swapchain_image_views(SwapchainContext& swapchain, VkDevice device) {
 		swapchain.image_views.resize(swapchain.images.size());
 		for (size_t i = 0; i < swapchain.images.size(); i++) {
 			VkImageViewCreateInfo view_info{};
@@ -101,8 +95,8 @@ namespace Nevarea::Renderer {
 			view_info.subresourceRange.baseArrayLayer = 0;
 			view_info.subresourceRange.layerCount = 1;
 
-			if (vkCreateImageView(device, &view_info, nullptr, &swapchain.image_views[i]) != VK_SUCCESS)
-				throw std::runtime_error("failed to create texture image view!");
+			NEVAREA_ASSERT(vkCreateImageView(device, &view_info, nullptr, &swapchain.image_views[i]) == VK_SUCCESS,
+				"VULKAN SWAPCHAIN", "Failed to create image view!");
 		}
 	}
 
@@ -135,8 +129,8 @@ namespace Nevarea::Renderer {
 		create_info.clipped = VK_TRUE;
 		create_info.oldSwapchain = old_swapchain;
 
-		if (vkCreateSwapchainKHR(device.device, &create_info, nullptr, &swapchain.swapchain) != VK_SUCCESS)
-			throw std::runtime_error("VkSwapchainKHR could not be created!");
+		NEVAREA_ASSERT(vkCreateSwapchainKHR(device.device, &create_info, nullptr, &swapchain.swapchain) == VK_SUCCESS,
+			"VULKAN SWAPCHAIN", "VkSwapchainKHR could not be created!");
 
 		if (old_swapchain != VK_NULL_HANDLE)
 			vkDestroySwapchainKHR(device.device, old_swapchain, nullptr);
@@ -164,7 +158,7 @@ namespace Nevarea::Renderer {
 		vulkan_swapchain_init(swapchain, device, surface, window, old_handle);
 	}
 
-	void vulkan_swapchain_destroy(const SwapchainContext swapchain, VkDevice device) {
+	void vulkan_swapchain_destroy(SwapchainContext& swapchain, VkDevice device) {
 		for (size_t i = 0; i < swapchain.image_views.size(); i++)
 			vkDestroyImageView(device, swapchain.image_views[i], nullptr);
 		
@@ -194,21 +188,19 @@ namespace Nevarea::Renderer {
 		fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			if (vkCreateSemaphore(device, &semaphore_info, nullptr, &frame_sync.image_available[i]) != VK_SUCCESS)
-				throw std::runtime_error("Failed to create image_available semaphore!");
+			NEVAREA_ASSERT(vkCreateSemaphore(device, &semaphore_info, nullptr, &frame_sync.image_available[i]) == VK_SUCCESS,
+				"VULKAN SWAPCHAIN", "Failed to create an avaliable image semaphore!");
 
-			if (vkCreateSemaphore(device, &semaphore_info, nullptr, &frame_sync.render_finished[i]) != VK_SUCCESS)
-				throw std::runtime_error("Failed to create render_finished semaphore!");
+			NEVAREA_ASSERT(vkCreateSemaphore(device, &semaphore_info, nullptr, &frame_sync.render_finished[i]) == VK_SUCCESS,
+				"VULKAN SWAPCHAIN", "Failed to create a finished render's semaphore!");
 
-			if (vkCreateFence(device, &fence_info, nullptr, &frame_sync.in_flight[i]) != VK_SUCCESS)
-				throw std::runtime_error("Failed to create in_flight fence!");
+			NEVAREA_ASSERT(vkCreateFence(device, &fence_info, nullptr, &frame_sync.in_flight[i]) == VK_SUCCESS,
+				"VULKAN SWAPCHAIN", "Failed to create an in flight fence!");
 		}
 
 		QueueFamilyIndices indices = find_queue_families(physical_device, surface);
 
-		// shouldnt this already be assumed that one exists?
-		if (!indices.graphics_family.has_value())
-			throw std::runtime_error("No graphics queue family found!");
+		NEVAREA_ASSERT(indices.graphics_family.has_value(), "VULKAN SWAPCHAIN", "No graphcis queue family found!");
 
 		VkCommandPoolCreateInfo pool_info{};
 		pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;

@@ -34,9 +34,7 @@ namespace Nevarea::Renderer {
 		const VkAllocationCallbacks* allocator
 	) {
 		auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-		if (func != nullptr) {
-			func(instance, debug_messenger, allocator);
-		}
+		if (func != nullptr) func(instance, debug_messenger, allocator);
 	}
 
 	void populate_debug_create_info(VkDebugUtilsMessengerCreateInfoEXT& debug_create_info)

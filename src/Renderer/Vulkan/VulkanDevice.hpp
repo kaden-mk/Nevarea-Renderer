@@ -1,7 +1,9 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-#include <optional>
+
+#include "Core/n_pch.hpp"
+#include "Core/InternalState.hpp"
 
 namespace Nevarea::Renderer {
 	struct DeviceContext {

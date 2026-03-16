@@ -1,10 +1,11 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-#include <vector>
 
 #include "VulkanDevice.hpp"
 #include "Platform/WindowSystem.hpp"
+
+#include "Core/InternalState.hpp"
 
 namespace Nevarea::Renderer {
 	struct SwapchainContext {
@@ -36,11 +37,15 @@ namespace Nevarea::Renderer {
         std::vector<VkPresentModeKHR> supported_present_modes;
     };
 
+    NEVAREA_FORCE_INLINE bool has_available_swapchain_support(const SurfaceContext& surface) {
+        return !surface.supported_formats.empty() && !surface.supported_present_modes.empty();
+    }
+
     void query_swapchain_support(VkPhysicalDevice physical_device, SurfaceContext& surface);
 
     void vulkan_swapchain_init(SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowSystemState* window, VkSwapchainKHR old_swapchain = VK_NULL_HANDLE);
     void recreate_swapchain(SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowSystemState* window);
-    void vulkan_swapchain_destroy(SwapchainContext swapchain, VkDevice device);
+    void vulkan_swapchain_destroy(SwapchainContext& swapchain, VkDevice device);
 
     void vulkan_frame_sync_init(FrameContext& frame_sync, DeviceContext& device_context, SurfaceContext& surface_context);
     void vulkan_frame_sync_destroy(FrameContext& frame_sync, VkDevice device);

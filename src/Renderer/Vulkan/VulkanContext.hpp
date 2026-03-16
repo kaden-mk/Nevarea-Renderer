@@ -1,6 +1,5 @@
 #pragma once
 
-#include <vector>
 #include <vulkan/vulkan.h>
 
 #include <Platform/WindowSystem.hpp>
@@ -13,7 +12,7 @@ namespace Nevarea::Renderer {
 		VkInstance instance;
 		VkDebugUtilsMessengerEXT debug_messenger;
 
-		WindowSystemState window;
+		WindowSystemState* window = nullptr;
 		DeviceContext device;
 		SurfaceContext surface;
 		SwapchainContext swapchain;

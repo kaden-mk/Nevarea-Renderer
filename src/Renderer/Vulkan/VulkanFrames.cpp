@@ -4,7 +4,7 @@
 #include "Core/InternalState.hpp"
 
 namespace Nevarea::Renderer {
-	VkCommandBuffer prepare_command_buffer(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowSystemState* window) {
+	static NEVAREA_FORCE_INLINE VkCommandBuffer prepare_command_buffer(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowSystemState* window) {
 		vkWaitForFences(device.device, 1, &frame.in_flight[frame.current_frame], VK_TRUE, UINT64_MAX);
 
 		VkResult result = vkAcquireNextImageKHR(device.device, swapchain.swapchain, UINT64_MAX,
@@ -18,8 +18,7 @@ namespace Nevarea::Renderer {
 		vkResetFences(device.device, 1, &frame.in_flight[frame.current_frame]);
 
 		VkCommandBuffer cmd = frame.command_buffers[frame.current_frame];
-		if (cmd == VK_NULL_HANDLE)
-			throw std::runtime_error("Drawing Command buffer is NULL!");
+		NEVAREA_ASSERT(cmd != VK_NULL_HANDLE, "VULKAN FRAMES", "The Drawing Command Buffer is Null!");
 
 		vkResetCommandBuffer(cmd, 0);
 
@@ -67,21 +66,18 @@ namespace Nevarea::Renderer {
 		return cmd;
 	}
 
-	void handle_queues(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowSystemState* window, VkCommandBuffer cmd) {
+	static NEVAREA_FORCE_INLINE void handle_queues(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowSystemState* window, VkCommandBuffer cmd) {
+		VkSemaphore wait_semaphores[] = { frame.image_available[frame.current_frame] };
+		VkSemaphore signal_semaphores[] = { frame.render_finished[frame.current_frame] };
+		VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+		
 		VkSubmitInfo submit_info{};
 		submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-		VkSemaphore wait_semaphores[] = { frame.image_available[frame.current_frame] };
-		VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-
 		submit_info.waitSemaphoreCount = 1;
 		submit_info.pWaitSemaphores = wait_semaphores;
 		submit_info.pWaitDstStageMask = wait_stages;
 		submit_info.commandBufferCount = 1;
 		submit_info.pCommandBuffers = &cmd;
-
-		VkSemaphore signal_semaphores[] = { frame.render_finished[frame.current_frame] };
-
 		submit_info.signalSemaphoreCount = 1;
 		submit_info.pSignalSemaphores = signal_semaphores;
 
@@ -98,7 +94,6 @@ namespace Nevarea::Renderer {
 		present_info.pImageIndices = &swapchain.current_image_index;
 
 		VkResult result = vkQueuePresentKHR(device.present_queue, &present_info);
-
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
 			recreate_swapchain(swapchain, device, surface, window);
 	}

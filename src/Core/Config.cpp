@@ -1,9 +1,17 @@
 #include "InternalState.hpp"
-#include <stdexcept>
+#include "lib/Config.hpp"
+
+#include "n_pch.hpp"
 
 namespace {
 	Nevarea::EngineConfig g_engine_config{};
 	bool g_is_initialized = false;
+}
+
+namespace Nevarea {
+    void init_config(const EngineConfig& config) {
+        Internal::set_global_config(config);
+    }
 }
 
 namespace Nevarea::Internal {
@@ -16,10 +24,4 @@ namespace Nevarea::Internal {
 
     const WindowConfig& get_window_config() { return g_engine_config.window; }
     const RendererConfig& get_renderer_config() { return g_engine_config.renderer; }
-}
-
-namespace Nevarea {
-    void init_config(const EngineConfig& config) {
-        Internal::set_global_config(config);
-    }
 }
