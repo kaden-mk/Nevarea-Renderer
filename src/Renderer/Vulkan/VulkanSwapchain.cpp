@@ -1,7 +1,5 @@
 #include "VulkanSwapchain.hpp"
 
-#include "Core/n_pch.hpp"
-
 namespace Nevarea::Renderer {
 	void query_swapchain_support(VkPhysicalDevice physical_device, SurfaceContext& surface) {
 		VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface.surface, &surface.capabilities);
@@ -32,19 +30,18 @@ namespace Nevarea::Renderer {
 	}
 
 	static VkExtent2D choose_swapchain_extent(const VkSurfaceCapabilitiesKHR& capabilities, VkExtent2D initial_window_extent) {
-		// If the platform has already chosen the extent
-		if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
+		if (capabilities.currentExtent.width != (std::numeric_limits<uint32_t>::max)())
 			return capabilities.currentExtent;
-		else { // Otherwise just clamp it to match the maximum extent using the framebuffer size
+		else {
 			VkExtent2D extent = initial_window_extent;
 
-			extent.width = std::max(
+			extent.width = (std::max)(
 				capabilities.minImageExtent.width,
-				std::min(capabilities.maxImageExtent.width, extent.width));
+				(std::min)(capabilities.maxImageExtent.width, extent.width));
 
-			extent.height = std::max(
+			extent.height = (std::max)(
 				capabilities.minImageExtent.height,
-				std::min(capabilities.maxImageExtent.height, extent.height));
+				(std::min)(capabilities.maxImageExtent.height, extent.height));
 
 			return extent;
 		}
@@ -62,9 +59,10 @@ namespace Nevarea::Renderer {
 		return VK_PRESENT_MODE_FIFO_KHR;
 	}
 
-	static VkExtent2D wait_for_valid_extent(WindowSystemState* window, DeviceContext& device, SurfaceContext& surface) {
+	static VkExtent2D wait_for_valid_extent(NevareaWindowState window, DeviceContext& device, SurfaceContext& surface) {
 		while (true) {
-			auto extent = window->get_extent();
+			NvWinExtent win_extent = window.get_extent();
+			VkExtent2D extent = { win_extent.width, win_extent.height };
 			if (extent.width == 0 || extent.height == 0) {
 				window_system_wait_events();
 				continue;
@@ -100,7 +98,7 @@ namespace Nevarea::Renderer {
 		}
 	}
 
-	void vulkan_swapchain_init(SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowSystemState* window, VkSwapchainKHR old_swapchain)
+	void vulkan_swapchain_init(SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, NevareaWindowState window, VkSwapchainKHR old_swapchain)
 	{
 		VkExtent2D swapchain_extent = wait_for_valid_extent(window, device, surface);
 		VkSurfaceFormatKHR surface_format = choose_surface_format(surface.supported_formats);
@@ -146,7 +144,7 @@ namespace Nevarea::Renderer {
 		vulkan_swapchain_image_views(swapchain, device.device);
 	}
 
-	void recreate_swapchain(SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowSystemState* window) {
+	void recreate_swapchain(SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, NevareaWindowState window) {
 		vkDeviceWaitIdle(device.device);
 
 		for (auto imageView : swapchain.image_views)

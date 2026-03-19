@@ -1,57 +1,33 @@
-#include "WindowSystem.hpp"
+#include "lib/WindowSystem.hpp"
 
 #include "Core/InternalState.hpp"
-
-#include <vulkan/vulkan.h>
+#include "Core/n_pch.hpp"
 
 namespace Nevarea {
-	bool window_system_init(WindowSystemState* state, uint32_t width, uint32_t height, const char* title)
-	{
-		NEVAREA_ASSERT(state != nullptr, "WINDOW SYSTEM", "Sent in state is nullptr, cannot be accessed.");
+	void NevareaWindowState::init(void* handle) {
+		#ifdef NEVAREA_PLATFORM_WINDOWS
+			this->hwnd = (HWND)handle;
+			this->hinstance = (HINSTANCE)GetWindowLongPtr(this->hwnd, GWLP_HINSTANCE);
 
-		if (!glfwInit())
-			return false;
+			RECT rect;
+			if (GetClientRect(this->hwnd, &rect)) {
+				this->width = rect.right - rect.left;
+				this->height = rect.bottom - rect.top;
+			}
+		#endif
 
-		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
-		GLFWwindow* window = glfwCreateWindow(width, height, title, nullptr, nullptr);
-		if (!window) {
-			std::cerr << "Failed to create GLFW window\n";
-			glfwTerminate();
-			return false;
-		}
-
-		state->window = window;
-		state->width = width;
-		state->height = height;
-
-		return true;
+		this->framebuffer_resized = false;
 	}
 
-	bool window_system_should_close(WindowSystemState* state)
-	{
-		return glfwWindowShouldClose(state->window);
-	}
-
-	void window_system_poll_events()
-	{
-		glfwPollEvents();
-	}
-
-	void window_system_wait_events()
-	{
-		glfwWaitEvents();
-	}
-
-	void window_system_cleanup(WindowSystemState* state)
-	{
-		glfwDestroyWindow(state->window);
-		glfwTerminate();
-	}
-
-	void window_system_create_surface(WindowSystemState* state, VkInstance instance, VkSurfaceKHR* surface)
-	{
-		if (glfwCreateWindowSurface(instance, state->window, nullptr, surface) != VK_SUCCESS)
-			throw std::runtime_error("Could not create window surface!");
+	void window_system_wait_events() {
+		#ifdef NEVAREA_PLATFORM_WINDOWS
+			MSG msg;
+			if (GetMessage(&msg, NULL, 0, 0)) {
+				while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+					TranslateMessage(&msg);
+					DispatchMessage(&msg);
+				}
+			}
+		#endif
 	}
 }

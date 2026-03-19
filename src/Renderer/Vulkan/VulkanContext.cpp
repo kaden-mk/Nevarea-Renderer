@@ -28,13 +28,6 @@ namespace Nevarea::Renderer {
 		VkDebugUtilsMessengerCreateInfoEXT debug_create_info{};
 		populate_debug_create_info(debug_create_info);
 
-		// glfw extensions
-		uint32_t glfw_extension_count = 0;
-		const char** glfw_extensions = glfwGetRequiredInstanceExtensions(&glfw_extension_count);
-
-		std::vector<const char*> combined_extensions(glfw_extensions, glfw_extensions + glfw_extension_count);
-		combined_extensions.insert(combined_extensions.end(), instance_extensions.begin(), instance_extensions.end());
-
 		VkInstanceCreateInfo instance_create_info{};
 		instance_create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 		instance_create_info.pNext = nullptr;
@@ -42,8 +35,8 @@ namespace Nevarea::Renderer {
 		instance_create_info.pApplicationInfo = &app_info;
 		instance_create_info.enabledLayerCount = 0;
 		instance_create_info.ppEnabledLayerNames = nullptr;
-		instance_create_info.enabledExtensionCount = static_cast<uint32_t>(combined_extensions.size());
-		instance_create_info.ppEnabledExtensionNames = combined_extensions.data();
+		instance_create_info.enabledExtensionCount = static_cast<uint32_t>(instance_extensions.size());
+		instance_create_info.ppEnabledExtensionNames = instance_extensions.data();
 
 		#ifdef NEVAREA_DEBUG
 		instance_create_info.enabledLayerCount = static_cast<uint32_t>(validation_layers.size());
@@ -72,12 +65,20 @@ namespace Nevarea::Renderer {
 			"VULKAN DEBUG CONTEXT", "Debug Messenger could not be setup!");
 	}
 
-	static void vulkan_context_create_surface(WindowSystemState* window, VkInstance instance, VkSurfaceKHR& surface)
+	static void vulkan_context_create_surface(NevareaWindowState window, VkInstance instance, VkSurfaceKHR& surface)
 	{
-		window_system_create_surface(window, instance, &surface);
+		#ifdef NEVAREA_PLATFORM_WINDOWS
+			VkWin32SurfaceCreateInfoKHR create_info{};
+			create_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+			create_info.hwnd = window.get_hwnd();
+			create_info.hinstance = window.get_hinstance();
+
+			NEVAREA_ASSERT(vkCreateWin32SurfaceKHR(instance, &create_info, nullptr, &surface) != VK_SUCCESS,
+				"VULKAN CONTEXT", "Could not create Win32 Surface!");
+		#endif
 	}
 
-	void vulkan_context_init(VulkanContext& context, WindowSystemState* window) {
+	void vulkan_context_init(VulkanContext& context, NevareaWindowState window) {
 		context.window = window;
 
 		vulkan_context_create_instance(context.instance);

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
-
 #include "Core/n_pch.hpp"
 #include "Core/InternalState.hpp"
 

@@ -1,4 +1,5 @@
 #pragma once
 
 #include "lib/Config.hpp"
-#include "lib/Application.hpp"
+#include "lib/Core.hpp"
+#include "lib/WindowSystem.hpp"

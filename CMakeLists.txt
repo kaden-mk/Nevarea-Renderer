@@ -6,7 +6,6 @@ add_library(NevareaRenderer STATIC
     src/Renderer/Vulkan/VulkanContext.cpp
     src/Renderer/Vulkan/VulkanDevice.cpp
     src/Renderer/Vulkan/VulkanSwapchain.cpp
-    src/Application/Application.cpp
     src/Core/Config.cpp
     src/Renderer/Vulkan/VulkanFrames.cpp
 )
@@ -27,7 +26,6 @@ target_include_directories(NevareaRenderer
         ${CMAKE_CURRENT_SOURCE_DIR}/external
 )
 
-add_subdirectory(external/glfw)
 target_link_libraries(NevareaRenderer PRIVATE glfw)
 
 find_package(Vulkan REQUIRED)
