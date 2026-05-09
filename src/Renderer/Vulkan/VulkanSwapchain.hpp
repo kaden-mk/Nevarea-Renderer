@@ -42,8 +42,8 @@ namespace Nevarea::Renderer {
 
     void query_swapchain_support(VkPhysicalDevice physical_device, SurfaceContext& surface);
 
-    void vulkan_swapchain_init(SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, NevareaWindowState window, VkSwapchainKHR old_swapchain = VK_NULL_HANDLE);
-    void recreate_swapchain(SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, NevareaWindowState window);
+    void vulkan_swapchain_init(SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkSwapchainKHR old_swapchain = VK_NULL_HANDLE);
+    void recreate_swapchain(SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window);
     void vulkan_swapchain_destroy(SwapchainContext& swapchain, VkDevice device);
 
     void vulkan_frame_sync_init(FrameContext& frame_sync, DeviceContext& device_context, SurfaceContext& surface_context);

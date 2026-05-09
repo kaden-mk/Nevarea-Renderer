@@ -11,14 +11,14 @@ namespace Nevarea::Renderer {
 		VkInstance instance;
 		VkDebugUtilsMessengerEXT debug_messenger;
 
-		NevareaWindowState window;
+		WindowHandle window;
 		DeviceContext device;
 		SurfaceContext surface;
 		SwapchainContext swapchain;
 		FrameContext frame_sync;
 	};
 
-	void vulkan_context_init(VulkanContext& context, NevareaWindowState window);
+	void vulkan_context_init(VulkanContext& context, WindowHandle window);
 	void vulkan_context_draw(VulkanContext& context);
 	void vulkan_context_destroy(VulkanContext& context);
 }

@@ -59,9 +59,9 @@ namespace Nevarea::Renderer {
 		return VK_PRESENT_MODE_FIFO_KHR;
 	}
 
-	static VkExtent2D wait_for_valid_extent(NevareaWindowState window, DeviceContext& device, SurfaceContext& surface) {
+	static VkExtent2D wait_for_valid_extent(WindowHandle window, DeviceContext& device, SurfaceContext& surface) {
 		while (true) {
-			NvWinExtent win_extent = window.get_extent();
+			NvWinExtent win_extent = window_get_extent(window);
 			VkExtent2D extent = { win_extent.width, win_extent.height };
 			if (extent.width == 0 || extent.height == 0) {
 				window_system_wait_events();
@@ -98,7 +98,7 @@ namespace Nevarea::Renderer {
 		}
 	}
 
-	void vulkan_swapchain_init(SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, NevareaWindowState window, VkSwapchainKHR old_swapchain)
+	void vulkan_swapchain_init(SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkSwapchainKHR old_swapchain)
 	{
 		VkExtent2D swapchain_extent = wait_for_valid_extent(window, device, surface);
 		VkSurfaceFormatKHR surface_format = choose_surface_format(surface.supported_formats);
@@ -144,7 +144,7 @@ namespace Nevarea::Renderer {
 		vulkan_swapchain_image_views(swapchain, device.device);
 	}
 
-	void recreate_swapchain(SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, NevareaWindowState window) {
+	void recreate_swapchain(SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window) {
 		vkDeviceWaitIdle(device.device);
 
 		for (auto imageView : swapchain.image_views)

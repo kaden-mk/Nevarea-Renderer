@@ -65,20 +65,20 @@ namespace Nevarea::Renderer {
 			"VULKAN DEBUG CONTEXT", "Debug Messenger could not be setup!");
 	}
 
-	static void vulkan_context_create_surface(NevareaWindowState window, VkInstance instance, VkSurfaceKHR& surface)
+	static void vulkan_context_create_surface(WindowHandle window, VkInstance instance, VkSurfaceKHR& surface)
 	{
 		#ifdef NEVAREA_PLATFORM_WINDOWS
 			VkWin32SurfaceCreateInfoKHR create_info{};
 			create_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-			create_info.hwnd = window.get_hwnd();
-			create_info.hinstance = window.get_hinstance();
+			create_info.hwnd = window_get_hwnd(window);
+			create_info.hinstance = window_get_hinstance(window);
 
 			NEVAREA_ASSERT(vkCreateWin32SurfaceKHR(instance, &create_info, nullptr, &surface) != VK_SUCCESS,
 				"VULKAN CONTEXT", "Could not create Win32 Surface!");
 		#endif
 	}
 
-	void vulkan_context_init(VulkanContext& context, NevareaWindowState window) {
+	void vulkan_context_init(VulkanContext& context, WindowHandle window) {
 		context.window = window;
 
 		vulkan_context_create_instance(context.instance);

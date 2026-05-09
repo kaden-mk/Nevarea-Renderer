@@ -2,7 +2,7 @@
 #include "Core/InternalState.hpp"
 
 namespace Nevarea::Renderer {
-	static NEVAREA_FORCE_INLINE VkCommandBuffer prepare_command_buffer(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, NevareaWindowState window) {
+	static NEVAREA_FORCE_INLINE VkCommandBuffer prepare_command_buffer(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window) {
 		vkWaitForFences(device.device, 1, &frame.in_flight[frame.current_frame], VK_TRUE, UINT64_MAX);
 
 		VkResult result = vkAcquireNextImageKHR(device.device, swapchain.swapchain, UINT64_MAX,
@@ -23,7 +23,7 @@ namespace Nevarea::Renderer {
 		return cmd;
 	}
 
-	VkCommandBuffer begin_frame_rendering(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, NevareaWindowState window) {
+	VkCommandBuffer begin_frame_rendering(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window) {
 		VkCommandBuffer cmd = prepare_command_buffer(frame, swapchain, device, surface, window);
 		if (cmd == VK_NULL_HANDLE) return VK_NULL_HANDLE;
 
@@ -64,7 +64,7 @@ namespace Nevarea::Renderer {
 		return cmd;
 	}
 
-	static NEVAREA_FORCE_INLINE void handle_queues(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, NevareaWindowState window, VkCommandBuffer cmd) {
+	static NEVAREA_FORCE_INLINE void handle_queues(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkCommandBuffer cmd) {
 		VkSemaphore wait_semaphores[] = { frame.image_available[frame.current_frame] };
 		VkSemaphore signal_semaphores[] = { frame.render_finished[frame.current_frame] };
 		VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
@@ -96,7 +96,7 @@ namespace Nevarea::Renderer {
 			recreate_swapchain(swapchain, device, surface, window);
 	}
 
-	void end_frame_rendering(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, NevareaWindowState window, VkCommandBuffer cmd)
+	void end_frame_rendering(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkCommandBuffer cmd)
 	{
 		vkCmdEndRendering(cmd);
 
