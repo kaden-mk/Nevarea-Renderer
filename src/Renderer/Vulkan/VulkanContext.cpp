@@ -91,10 +91,6 @@ namespace Nevarea::Renderer {
 			"VULKAN CONTEXT", "Could not create VulkanMemoryAllocator!");
 	}
 
-	static void vulkan_context_destroy_allocator(VmaAllocator allocator) {
-		vmaDestroyAllocator(allocator);
-	}
-
 	void vulkan_context_init(VulkanContext& context, WindowHandle window) {
 		context.window = window;
 
@@ -103,6 +99,7 @@ namespace Nevarea::Renderer {
 		vulkan_context_create_surface(context.window, context.instance, context.surface.surface);
 		vulkan_device_init(context.device, context.instance, context.surface.surface);
 		vulkan_context_create_allocator(context.instance, context.device.physical_device, context.device.device, context.allocator);
+		vulkan_resources_init(context.resource_manager, context.allocator);
 		vulkan_swapchain_init(context.swapchain, context.device, context.surface, context.window);
 		vulkan_frame_sync_init(context.frame_sync, context.device, context.surface);
 	}
@@ -122,7 +119,8 @@ namespace Nevarea::Renderer {
 		vulkan_frame_sync_destroy(context.frame_sync, context.device.device);
 		vulkan_swapchain_destroy(context.swapchain, context.device.device);
 
-		vulkan_context_destroy_allocator(context.allocator);
+		vulkan_resources_destroy(context.resource_manager);
+		vmaDestroyAllocator(context.allocator);
 
 		vulkan_device_destroy(&context.device);
 

@@ -5,6 +5,7 @@
 
 #include "VulkanDevice.hpp"
 #include "VulkanSwapchain.hpp"
+#include "VulkanResourceManager.hpp"
 
 #include <vk_mem_alloc.h>
 
@@ -14,6 +15,7 @@ namespace Nevarea::Renderer {
 		VkDebugUtilsMessengerEXT debug_messenger;
 		VmaAllocator allocator;
 
+		ResourceManager resource_manager;
 		WindowHandle window;
 		DeviceContext device;
 		SurfaceContext surface;

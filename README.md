@@ -9,7 +9,7 @@
 	- NEVAREA_API (for later .dll use)
 	- NEVAREA_LOG (possibly for a logging system?)
 - [X] Implement VulkanMemoryAllocator https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/tree/master
-- [] Resource Manager for handles instead of raw VkBuffers
+- [X] Resource Manager for handles instead of raw VkBuffers
 - [] Implement a PipelineBuilder system
 - [] Finally, render our first triangle
 
