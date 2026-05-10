@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
 project(NevareaRenderer LANGUAGES CXX)
 
+add_library(VulkanMemoryAllocator INTERFACE)
+
+target_include_directories(VulkanMemoryAllocator INTERFACE vendor/vma/)
+
 add_library(NevareaRenderer STATIC
     src/Platform/WindowSystem.cpp
     src/Renderer/Vulkan/VulkanContext.cpp
@@ -8,7 +12,8 @@ add_library(NevareaRenderer STATIC
     src/Renderer/Vulkan/VulkanSwapchain.cpp
     src/Core/Config.cpp
     src/Renderer/Vulkan/VulkanFrames.cpp
-)
+    src/Renderer/Rendering.cpp
+ "src/Renderer/Vulkan/VulkanAllocator.cpp")
 
  target_precompile_headers(NevareaRenderer PRIVATE
     src/Core/n_pch.hpp
@@ -23,13 +28,12 @@ target_include_directories(NevareaRenderer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/in
 target_include_directories(NevareaRenderer
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
-        ${CMAKE_CURRENT_SOURCE_DIR}/external
 )
-
-target_link_libraries(NevareaRenderer PRIVATE glfw)
 
 find_package(Vulkan REQUIRED)
 target_link_libraries(NevareaRenderer PRIVATE Vulkan::Vulkan)
+
+target_link_libraries(NevareaRenderer PRIVATE VulkanMemoryAllocator)
 
 set_target_properties(NevareaRenderer PROPERTIES
     CXX_STANDARD 20

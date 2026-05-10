@@ -6,6 +6,8 @@
 #include "Core/InternalState.hpp"
 #include "Core/n_pch.hpp"
 
+#define NEVAREA_VULKAN_VERSION VK_API_VERSION_1_4
+
 namespace Nevarea::Renderer {
 	static void vulkan_context_create_instance(VkInstance& instance)
 	{
@@ -16,7 +18,7 @@ namespace Nevarea::Renderer {
 		app_info.pEngineName = "No Engine";
 		app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 		app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-		app_info.apiVersion = VK_API_VERSION_1_4;
+		app_info.apiVersion = NEVAREA_VULKAN_VERSION;
 
 		// extension properties (TODO: validate extensions that can be used)
 		uint32_t extension_count = 0;
@@ -73,9 +75,24 @@ namespace Nevarea::Renderer {
 			create_info.hwnd = window_get_hwnd(window);
 			create_info.hinstance = window_get_hinstance(window);
 
-			NEVAREA_ASSERT(vkCreateWin32SurfaceKHR(instance, &create_info, nullptr, &surface) != VK_SUCCESS,
+			NEVAREA_ASSERT(vkCreateWin32SurfaceKHR(instance, &create_info, nullptr, &surface) == VK_SUCCESS,
 				"VULKAN CONTEXT", "Could not create Win32 Surface!");
 		#endif
+	}
+
+	static void vulkan_context_create_allocator(VkInstance instance, VkPhysicalDevice physical_device, VkDevice device, VmaAllocator& allocator) {
+		VmaAllocatorCreateInfo create_info{};
+		create_info.instance = instance;
+		create_info.device = device;
+		create_info.physicalDevice = physical_device;
+		create_info.vulkanApiVersion = NEVAREA_VULKAN_VERSION;
+
+		NEVAREA_ASSERT(vmaCreateAllocator(&create_info, &allocator) == VK_SUCCESS,
+			"VULKAN CONTEXT", "Could not create VulkanMemoryAllocator!");
+	}
+
+	static void vulkan_context_destroy_allocator(VmaAllocator allocator) {
+		vmaDestroyAllocator(allocator);
 	}
 
 	void vulkan_context_init(VulkanContext& context, WindowHandle window) {
@@ -85,6 +102,7 @@ namespace Nevarea::Renderer {
 		vulkan_context_debug_messenger(context.instance, context.debug_messenger);
 		vulkan_context_create_surface(context.window, context.instance, context.surface.surface);
 		vulkan_device_init(context.device, context.instance, context.surface.surface);
+		vulkan_context_create_allocator(context.instance, context.device.physical_device, context.device.device, context.allocator);
 		vulkan_swapchain_init(context.swapchain, context.device, context.surface, context.window);
 		vulkan_frame_sync_init(context.frame_sync, context.device, context.surface);
 	}
@@ -103,6 +121,9 @@ namespace Nevarea::Renderer {
 
 		vulkan_frame_sync_destroy(context.frame_sync, context.device.device);
 		vulkan_swapchain_destroy(context.swapchain, context.device.device);
+
+		vulkan_context_destroy_allocator(context.allocator);
+
 		vulkan_device_destroy(&context.device);
 
 		#ifdef NEVAREA_DEBUG

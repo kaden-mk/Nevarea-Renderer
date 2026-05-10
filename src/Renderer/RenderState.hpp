@@ -4,5 +4,17 @@
 #include "lib/Rendering.hpp"
 
 namespace Nevarea {
+	struct RenderState {
+		RenderingAPI api = RenderingAPI::NONE;
 
+        bool is_active;
+
+        union {
+            Renderer::VulkanContext vulkan;
+            // then i could have other contexts here ig
+        };
+
+        RenderState() {}
+        ~RenderState() {}
+    };
 }

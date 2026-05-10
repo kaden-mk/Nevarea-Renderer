@@ -29,5 +29,5 @@ namespace Nevarea {
 		HINSTANCE window_get_hinstance(WindowHandle window);
 	#endif
 
-	NEVAREA_FORCE_INLINE void window_system_wait_events();
+	void window_system_wait_events();
 }

@@ -9,7 +9,7 @@ namespace Nevarea {
 			uint32_t width;
 			uint32_t height;
 			bool framebuffer_resized;
-			bool used;
+			bool is_active;
 
 			#ifdef NEVAREA_PLATFORM_WINDOWS
 				HWND hwnd;
@@ -22,20 +22,22 @@ namespace Nevarea {
 
 		WindowState* resolve(WindowHandle window) {
 			uint32_t value = static_cast<uint32_t>(window);
+
 			NEVAREA_ASSERT(value != 0 && value <= MAX_WINDOWS, "WINDOW SYSTEM", "Invalid WindowHandle!");
-			WindowState* window = &g_windows[value - 1];
-			NEVAREA_ASSERT(window->used, "WINDOW SYSTEM", "WindowHandle refers to a destroyed window!");
-			return window;
+			WindowState* window_state = &g_windows[value - 1];
+
+			NEVAREA_ASSERT(window_state->is_active, "WINDOW SYSTEM", "WindowHandle refers to a destroyed window!");
+			return window_state;
 		}
 	}
 
 	WindowHandle window_create(void* native_handle) {
 		for (uint32_t i = 0; i < MAX_WINDOWS; ++i) {
-			if (g_windows[i].used) continue;
+			if (g_windows[i].is_active) continue;
 
 			WindowState& window_state = g_windows[i];
 			window_state = {};
-			window_state.used = true;
+			window_state.is_active = true;
 
 			#ifdef NEVAREA_PLATFORM_WINDOWS
 				window_state.hwnd = (HWND)native_handle;
@@ -73,13 +75,13 @@ namespace Nevarea {
 	}
 
 	#ifdef NEVAREA_PLATFORM_WINDOWS
-		HWND window_get_hwnd(WindowHandle window) {
-			return resolve(window)->hwnd;
-		}
+	HWND window_get_hwnd(WindowHandle window) {
+		return resolve(window)->hwnd;
+	}
 
-		HINSTANCE window_get_hinstance(WindowHandle window) {
-			return resolve(window)->hinstance;
-		}
+	HINSTANCE window_get_hinstance(WindowHandle window) {
+		return resolve(window)->hinstance;
+	}
 	#endif
 
 	void window_system_wait_events() {

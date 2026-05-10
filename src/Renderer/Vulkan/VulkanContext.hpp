@@ -6,10 +6,13 @@
 #include "VulkanDevice.hpp"
 #include "VulkanSwapchain.hpp"
 
+#include <vk_mem_alloc.h>
+
 namespace Nevarea::Renderer {
 	struct VulkanContext {
 		VkInstance instance;
 		VkDebugUtilsMessengerEXT debug_messenger;
+		VmaAllocator allocator;
 
 		WindowHandle window;
 		DeviceContext device;

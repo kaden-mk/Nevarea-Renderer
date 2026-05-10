@@ -1,14 +1,14 @@
 # Nevarea Renderer
 
 ## TODO (for the first triangle!!)
-- [] Remove application creation and instead hook into a window/application. (Since Nevarea is a renderer, not an engine).
+- [X] Remove application creation and instead hook into a window/application. (Since Nevarea is a renderer, not an engine).
 - [X] Create a precompiled header. dk why i didnt do this sooner
 - [X] Define some custom macros for ease of use internally
 	- NEVAREA_ASSERT
 	- NEVAREA_FORCE_INLINE
 	- NEVAREA_API (for later .dll use)
 	- NEVAREA_LOG (possibly for a logging system?)
-- [] Implement VulkanMemoryAllocator https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/tree/master
+- [X] Implement VulkanMemoryAllocator https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/tree/master
 - [] Resource Manager for handles instead of raw VkBuffers
 - [] Implement a PipelineBuilder system
 - [] Finally, render our first triangle
