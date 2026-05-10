@@ -86,6 +86,7 @@ namespace Nevarea::Renderer {
 		create_info.device = device;
 		create_info.physicalDevice = physical_device;
 		create_info.vulkanApiVersion = NEVAREA_VULKAN_VERSION;
+		create_info.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 
 		NEVAREA_ASSERT(vmaCreateAllocator(&create_info, &allocator) == VK_SUCCESS,
 			"VULKAN CONTEXT", "Could not create VulkanMemoryAllocator!");

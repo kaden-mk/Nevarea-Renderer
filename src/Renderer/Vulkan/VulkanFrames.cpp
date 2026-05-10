@@ -31,18 +31,28 @@ namespace Nevarea::Renderer {
 		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		vkBeginCommandBuffer(cmd, &begin_info);
 
-		VkImageMemoryBarrier begin_barrier{};
-		begin_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		VkImageMemoryBarrier2 begin_barrier{};
+		begin_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+		begin_barrier.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
 		begin_barrier.srcAccessMask = 0;
-		begin_barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		begin_barrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+		begin_barrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
 		begin_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		begin_barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		begin_barrier.image = swapchain.images[swapchain.current_image_index];
 		begin_barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
 
-		vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-			0, 0, nullptr, 0, nullptr, 1, &begin_barrier);
+		VkDependencyInfo dependency_info{};
+		dependency_info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+		dependency_info.dependencyFlags = 0;
+		dependency_info.memoryBarrierCount = 0;
+		dependency_info.pMemoryBarriers = NULL;
+		dependency_info.bufferMemoryBarrierCount = 0;
+		dependency_info.pBufferMemoryBarriers = NULL;
+		dependency_info.imageMemoryBarrierCount = 1;
+		dependency_info.pImageMemoryBarriers = &begin_barrier;
+
+		vkCmdPipelineBarrier2(cmd, &dependency_info);
 
 		VkRenderingAttachmentInfo color_attachment{};
 		color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
@@ -65,28 +75,39 @@ namespace Nevarea::Renderer {
 	}
 
 	static NEVAREA_FORCE_INLINE void handle_queues(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkCommandBuffer cmd) {
-		VkSemaphore wait_semaphores[] = { frame.image_available[frame.current_frame] };
 		VkSemaphore signal_semaphores[] = { frame.render_finished[frame.current_frame] };
-		VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-		
-		VkSubmitInfo submit_info{};
-		submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submit_info.waitSemaphoreCount = 1;
-		submit_info.pWaitSemaphores = wait_semaphores;
-		submit_info.pWaitDstStageMask = wait_stages;
-		submit_info.commandBufferCount = 1;
-		submit_info.pCommandBuffers = &cmd;
-		submit_info.signalSemaphoreCount = 1;
-		submit_info.pSignalSemaphores = signal_semaphores;
 
-		vkQueueSubmit(device.graphics_queue, 1, &submit_info, frame.in_flight[frame.current_frame]);
+		VkSemaphoreSubmitInfo wait_info{};
+		wait_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+		wait_info.semaphore = frame.image_available[frame.current_frame];
+		wait_info.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+		VkSemaphoreSubmitInfo signal_info{};
+		signal_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+		signal_info.semaphore = frame.render_finished[frame.current_frame];
+		signal_info.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+		VkCommandBufferSubmitInfo cmd_info{};
+		cmd_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+		cmd_info.commandBuffer = cmd;
+
+		VkSubmitInfo2 submit_info{};
+		submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+		submit_info.waitSemaphoreInfoCount = 1;
+		submit_info.pWaitSemaphoreInfos = &wait_info;
+		submit_info.signalSemaphoreInfoCount = 1;
+		submit_info.pSignalSemaphoreInfos = &signal_info;
+		submit_info.commandBufferInfoCount = 1;
+		submit_info.pCommandBufferInfos = &cmd_info;
+
+		vkQueueSubmit2(device.graphics_queue, 1, &submit_info, frame.in_flight[frame.current_frame]);
+
+		VkSwapchainKHR swapchains[] = { swapchain.swapchain };
 
 		VkPresentInfoKHR present_info{};
 		present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 		present_info.waitSemaphoreCount = 1;
 		present_info.pWaitSemaphores = signal_semaphores;
-
-		VkSwapchainKHR swapchains[] = { swapchain.swapchain };
 		present_info.swapchainCount = 1;
 		present_info.pSwapchains = swapchains;
 		present_info.pImageIndices = &swapchain.current_image_index;
@@ -100,18 +121,28 @@ namespace Nevarea::Renderer {
 	{
 		vkCmdEndRendering(cmd);
 
-		VkImageMemoryBarrier end_barrier{};
-		end_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		end_barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		VkImageMemoryBarrier2 end_barrier{};
+		end_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+		end_barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+		end_barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+		end_barrier.dstStageMask = VK_PIPELINE_STAGE_2_NONE;
 		end_barrier.dstAccessMask = 0;
 		end_barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 		end_barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 		end_barrier.image = swapchain.images[swapchain.current_image_index];
 		end_barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
 
-		vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-			VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-			0, 0, nullptr, 0, nullptr, 1, &end_barrier);
+		VkDependencyInfo dependency_info{};
+		dependency_info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+		dependency_info.dependencyFlags = 0;
+		dependency_info.memoryBarrierCount = 0;
+		dependency_info.pMemoryBarriers = NULL;
+		dependency_info.bufferMemoryBarrierCount = 0;
+		dependency_info.pBufferMemoryBarriers = NULL;
+		dependency_info.imageMemoryBarrierCount = 1;
+		dependency_info.pImageMemoryBarriers = &end_barrier;
+
+		vkCmdPipelineBarrier2(cmd, &dependency_info);
 
 		vkEndCommandBuffer(cmd);
 

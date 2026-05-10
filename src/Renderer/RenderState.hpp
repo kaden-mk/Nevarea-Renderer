@@ -7,7 +7,7 @@ namespace Nevarea {
 	struct RenderState {
 		RenderingAPI api = RenderingAPI::NONE;
 
-        bool is_active;
+        bool is_active = false;
 
         union {
             Renderer::VulkanContext vulkan;

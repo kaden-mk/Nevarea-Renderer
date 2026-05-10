@@ -73,7 +73,9 @@ namespace Nevarea::Renderer {
 		bool swapchain_adequate = is_swapchain_adequate(device, surface);
 		bool queue_family_is_complete = find_queue_families(device, surface).is_complete();
 
+		VkPhysicalDeviceVulkan12Features features12{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES };
 		VkPhysicalDeviceVulkan13Features features13{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES };
+		features13.pNext = &features12;
 		VkPhysicalDeviceFeatures2 device_features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
 		device_features.pNext = &features13;
 
@@ -83,7 +85,9 @@ namespace Nevarea::Renderer {
 			&& extensions_supported
 			&& swapchain_adequate
 			&& device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
-			&& features13.dynamicRendering; // TODO: make this not hardcoded
+			&& features13.dynamicRendering // TODO: make this not hardcoded
+			&& features13.synchronization2
+			&& features12.bufferDeviceAddress;
 	}
 
 	void vulkan_device_init(DeviceContext& device_context, VkInstance instance, VkSurfaceKHR surface)
@@ -145,38 +149,35 @@ namespace Nevarea::Renderer {
 			queue_create_infos.push_back(queue_create_info);
 		}
 
-		VkPhysicalDeviceScalarBlockLayoutFeatures scalar_layout_features{};
-		scalar_layout_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES;
-		scalar_layout_features.scalarBlockLayout = VK_TRUE;
-
-		VkPhysicalDeviceDescriptorIndexingFeatures indexing_features{};
-		indexing_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
-		indexing_features.runtimeDescriptorArray = true;
-		indexing_features.descriptorBindingPartiallyBound = true;
-		indexing_features.shaderStorageBufferArrayNonUniformIndexing = true;
-		indexing_features.shaderSampledImageArrayNonUniformIndexing = true;
-		indexing_features.shaderStorageImageArrayNonUniformIndexing = true;
-		indexing_features.descriptorBindingStorageBufferUpdateAfterBind = true;
-		indexing_features.descriptorBindingSampledImageUpdateAfterBind = true;
-		indexing_features.descriptorBindingStorageImageUpdateAfterBind = true;
-		indexing_features.pNext = &scalar_layout_features;
+		VkPhysicalDeviceVulkan12Features features12{};
+		features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+		features12.bufferDeviceAddress = VK_TRUE;
+		features12.scalarBlockLayout = VK_TRUE;
+		features12.runtimeDescriptorArray = VK_TRUE;
+		features12.descriptorBindingPartiallyBound = VK_TRUE;
+		features12.shaderStorageBufferArrayNonUniformIndexing = VK_TRUE;
+		features12.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+		features12.shaderStorageImageArrayNonUniformIndexing = VK_TRUE;
+		features12.descriptorBindingStorageBufferUpdateAfterBind = VK_TRUE;
+		features12.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+		features12.descriptorBindingStorageImageUpdateAfterBind = VK_TRUE;
 
 		VkPhysicalDeviceVulkan13Features features13{};
 		features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
 		features13.dynamicRendering = VK_TRUE;
-		features13.pNext = &indexing_features;
+		features13.synchronization2 = VK_TRUE;
+		features13.pNext = &features12;
 
-		// should use vkGetPhysicalDeviceFeatures2 soon
-		VkPhysicalDeviceFeatures2 device_features{};
-		device_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-		device_features.features.samplerAnisotropy = true;
-		device_features.features.vertexPipelineStoresAndAtomics = true;
-		device_features.features.fragmentStoresAndAtomics = true;
-		device_features.pNext = &features13;
+		VkPhysicalDeviceFeatures2 features2{};
+		features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+		features2.features.samplerAnisotropy = VK_TRUE;
+		features2.features.vertexPipelineStoresAndAtomics = VK_TRUE;
+		features2.features.fragmentStoresAndAtomics = VK_TRUE;
+		features2.pNext = &features13;
 
 		VkDeviceCreateInfo create_info{};
 		create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-		create_info.pNext = &device_features;
+		create_info.pNext = &features2;
 		create_info.queueCreateInfoCount = static_cast<uint32_t>(queue_create_infos.size());
 		create_info.pQueueCreateInfos = queue_create_infos.data();
 		create_info.pEnabledFeatures = nullptr;
