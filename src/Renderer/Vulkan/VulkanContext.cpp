@@ -102,7 +102,7 @@ namespace Nevarea::Renderer {
 		vulkan_context_create_allocator(context.instance, context.device.physical_device, context.device.device, context.allocator);
 		vulkan_resources_init(context.resource_manager, context.allocator);
 		vulkan_swapchain_init(context.swapchain, context.device, context.surface, context.window);
-		vulkan_frame_sync_init(context.frame_sync, context.device, context.surface);
+		vulkan_frame_sync_init(context.frame_sync, context.device);
 	}
 
 	void vulkan_context_draw(VulkanContext& context) {

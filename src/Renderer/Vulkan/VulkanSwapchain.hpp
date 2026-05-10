@@ -46,6 +46,6 @@ namespace Nevarea::Renderer {
     void recreate_swapchain(SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window);
     void vulkan_swapchain_destroy(SwapchainContext& swapchain, VkDevice device);
 
-    void vulkan_frame_sync_init(FrameContext& frame_sync, DeviceContext& device_context, SurfaceContext& surface_context);
+    void vulkan_frame_sync_init(FrameContext& frame_sync, DeviceContext& device_context);
     void vulkan_frame_sync_destroy(FrameContext& frame_sync, VkDevice device);
 }

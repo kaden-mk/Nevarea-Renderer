@@ -163,12 +163,10 @@ namespace Nevarea::Renderer {
 		vkDestroySwapchainKHR(device, swapchain.swapchain, nullptr);
 	}
 
-	void vulkan_frame_sync_init(FrameContext& frame_sync, DeviceContext& device_context, SurfaceContext& surface_context)
+	void vulkan_frame_sync_init(FrameContext& frame_sync, DeviceContext& device_context)
 	{
 		RendererConfig config = Internal::get_renderer_config();
 		VkDevice device = device_context.device;
-		VkPhysicalDevice physical_device = device_context.physical_device;
-		VkSurfaceKHR surface = surface_context.surface;
 
 		uint32_t MAX_FRAMES_IN_FLIGHT = config.max_frames_in_flight;
 
@@ -196,14 +194,14 @@ namespace Nevarea::Renderer {
 				"VULKAN SWAPCHAIN", "Failed to create an in flight fence!");
 		}
 
-		QueueFamilyIndices indices = find_queue_families(physical_device, surface);
+		//QueueFamilyIndices indices = find_queue_families(physical_device, surface);
 
-		NEVAREA_ASSERT(indices.graphics_family.has_value(), "VULKAN SWAPCHAIN", "No graphcis queue family found!");
+		//NEVAREA_ASSERT(indices.graphics_family.has_value(), "VULKAN SWAPCHAIN", "No graphcis queue family found!");
 
 		VkCommandPoolCreateInfo pool_info{};
 		pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-		pool_info.queueFamilyIndex = indices.graphics_family.value();
+		pool_info.queueFamilyIndex = device_context.graphics_family_index;
 
 		vkCreateCommandPool(device, &pool_info, nullptr, &frame_sync.command_pool);
 

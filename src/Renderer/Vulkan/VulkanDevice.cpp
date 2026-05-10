@@ -13,8 +13,13 @@ namespace Nevarea::Renderer {
 		vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, queue_families.data());
 
 		for (uint32_t i = 0; i < queue_family_count; i++) {
-			if (queue_families[i].queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT))
+			if (queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
 				indices.graphics_family = i;
+			else if (queue_families[i].queueFlags & VK_QUEUE_COMPUTE_BIT)
+				indices.compute_family = i;
+
+			if (!indices.compute_family.has_value())
+				indices.compute_family = indices.graphics_family;
 
 			VkBool32 present_support = false;
 			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &present_support);
@@ -135,7 +140,8 @@ namespace Nevarea::Renderer {
 		std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
 		std::set<uint32_t> unique_queue_families = {
 			indices.graphics_family.value(),
-			indices.present_family.value()
+			indices.present_family.value(),
+			indices.compute_family.value()
 		};
 
 		float queue_priority = 1.0f;
@@ -193,7 +199,11 @@ namespace Nevarea::Renderer {
 		NEVAREA_ASSERT(vkCreateDevice(device_context->physical_device, &create_info, nullptr, &device_context->device) == VK_SUCCESS,
 			"VULKAN DEVICE", "Could not create logical device!")
 
+		device_context->graphics_family_index = indices.graphics_family.value();
+		device_context->compute_family_index = indices.compute_family.value();
+
 		vkGetDeviceQueue(device_context->device, indices.graphics_family.value(), 0, &device_context->graphics_queue);
 		vkGetDeviceQueue(device_context->device, indices.present_family.value(), 0, &device_context->present_queue);
+		vkGetDeviceQueue(device_context->device, indices.compute_family.value(), 0, &device_context->compute_queue);
 	}
 }
