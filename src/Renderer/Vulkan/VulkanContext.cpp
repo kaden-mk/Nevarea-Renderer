@@ -102,12 +102,26 @@ namespace Nevarea::Renderer {
 		vulkan_context_create_allocator(context.instance, context.device.physical_device, context.device.device, context.allocator);
 		vulkan_resources_init(context.resource_manager, context.allocator);
 		vulkan_swapchain_init(context.swapchain, context.device, context.surface, context.window);
+		vulkan_pipeline_init(context.pipeline, context.device.device, context.swapchain.image_format);
 		vulkan_frame_sync_init(context.frame_sync, context.device);
 	}
 
 	void vulkan_context_draw(VulkanContext& context) {
 		if (VkCommandBuffer cmd = begin_frame_rendering(context.frame_sync, context.swapchain, context.device, context.surface, context.window); cmd != VK_NULL_HANDLE) {
-			// drawing stuff here
+			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, context.pipeline.pipeline);
+
+			VkViewport viewport{};
+			viewport.width = static_cast<float>(context.swapchain.extent.width);
+			viewport.height = static_cast<float>(context.swapchain.extent.height);
+			viewport.minDepth = 0.0f;
+			viewport.maxDepth = 1.0f;
+
+			VkRect2D scissor{ {0, 0}, context.swapchain.extent };
+
+			vkCmdSetViewport(cmd, 0, 1, &viewport);
+			vkCmdSetScissor(cmd, 0, 1, &scissor);
+
+			vkCmdDraw(cmd, 3, 1, 0, 0);
 
 			end_frame_rendering(context.frame_sync, context.swapchain, context.device, context.surface, context.window, cmd);
 		}
@@ -122,6 +136,8 @@ namespace Nevarea::Renderer {
 
 		vulkan_resources_destroy(context.resource_manager);
 		vmaDestroyAllocator(context.allocator);
+
+		vulkan_pipeline_destroy(context.pipeline, context.device.device);
 
 		vulkan_device_destroy(&context.device);
 

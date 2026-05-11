@@ -10,8 +10,8 @@
 	- NEVAREA_LOG (possibly for a logging system?)
 - [X] Implement VulkanMemoryAllocator https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/tree/master
 - [X] Resource Manager for handles instead of raw VkBuffers
-- [] Implement a PipelineBuilder system
-- [] Finally, render our first triangle
+- [X] Implement a PipelineBuilder system
+- [X] Finally, render our first triangle
 
 ## What does Nevarea handle for you?
 

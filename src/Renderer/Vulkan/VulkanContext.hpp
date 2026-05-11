@@ -6,6 +6,7 @@
 #include "VulkanDevice.hpp"
 #include "VulkanSwapchain.hpp"
 #include "VulkanResourceManager.hpp"
+#include "VulkanPipeline.hpp"
 
 #include <vk_mem_alloc.h>
 
@@ -21,6 +22,7 @@ namespace Nevarea::Renderer {
 		SurfaceContext surface;
 		SwapchainContext swapchain;
 		FrameContext frame_sync;
+		PipelineContext pipeline;
 	};
 
 	void vulkan_context_init(VulkanContext& context, WindowHandle window);

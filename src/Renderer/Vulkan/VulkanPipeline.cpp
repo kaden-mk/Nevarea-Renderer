@@ -1,0 +1,132 @@
+#include "Core/n_pch.hpp"
+
+#include "VulkanPipeline.hpp"
+
+using FileData = std::vector<char>;
+
+namespace Nevarea::Renderer {
+	FileData read_file(const std::string& filepath) {
+		std::ifstream file(filepath, std::ios::ate | std::ios::binary);
+
+		if (!file.is_open())
+			throw std::runtime_error("failed to open file: " + filepath);
+
+		size_t fileSize = static_cast<size_t>(file.tellg());
+		std::vector<char> buffer(fileSize);
+
+		file.seekg(0);
+		file.read(buffer.data(), fileSize);
+
+		file.close();
+
+		return buffer;
+	}
+
+	void create_shader_module(VkDevice device, FileData shader_code, VkShaderModule* shader_module) {
+		VkShaderModuleCreateInfo create_info{};
+		create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		create_info.codeSize = shader_code.size();
+		create_info.pCode = reinterpret_cast<const uint32_t*>(shader_code.data());
+
+		NEVAREA_ASSERT(vkCreateShaderModule(device, &create_info, nullptr, shader_module) == VK_SUCCESS, 
+			"VULKAN PIPELINE", "Could not create shader module!")
+	}
+
+	void vulkan_pipeline_init(PipelineContext& pipeline, VkDevice device, VkFormat color_format) {
+		FileData vert_code = read_file("shaders/triangle.vert.spv");
+		FileData frag_code = read_file("shaders/triangle.frag.spv");
+
+		VkShaderModule vert_shader;
+		VkShaderModule frag_shader;
+
+		create_shader_module(device, vert_code, &vert_shader);
+		create_shader_module(device, frag_code, &frag_shader);
+
+		VkPipelineLayoutCreateInfo layout_info{};
+		layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		layout_info.setLayoutCount = 0;
+		layout_info.pushConstantRangeCount = 0;
+
+		NEVAREA_ASSERT(vkCreatePipelineLayout(device, &layout_info, nullptr, &pipeline.layout) == VK_SUCCESS,
+			"VULKAN PIPELINE", "Could not create pipeline layout!");
+
+		VkPipelineShaderStageCreateInfo shader_stages[2]{};
+		shader_stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		shader_stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
+		shader_stages[0].module = vert_shader;
+		shader_stages[0].pName = "main";
+
+		shader_stages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		shader_stages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+		shader_stages[1].module = frag_shader;
+		shader_stages[1].pName = "main";
+
+		VkPipelineVertexInputStateCreateInfo vertex_input{};
+		vertex_input.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+		VkPipelineInputAssemblyStateCreateInfo input_assembly{};
+		input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+		input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
+		VkDynamicState dynamic_states[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+		VkPipelineDynamicStateCreateInfo dynamic_state{};
+		dynamic_state.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+		dynamic_state.dynamicStateCount = 2;
+		dynamic_state.pDynamicStates = dynamic_states;
+
+		VkPipelineViewportStateCreateInfo viewport_state{};
+		viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+		viewport_state.viewportCount = 1;
+		viewport_state.scissorCount = 1;
+
+		VkPipelineRasterizationStateCreateInfo rasterization{};
+		rasterization.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+		rasterization.polygonMode = VK_POLYGON_MODE_FILL;
+		rasterization.cullMode = VK_CULL_MODE_NONE;
+		rasterization.frontFace = VK_FRONT_FACE_CLOCKWISE;
+		rasterization.lineWidth = 1.0f;
+
+		VkPipelineMultisampleStateCreateInfo multisample{};
+		multisample.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+		multisample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+		VkPipelineColorBlendAttachmentState blend_attachment{};
+		blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+		                                  VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+
+		VkPipelineColorBlendStateCreateInfo color_blend{};
+		color_blend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+		color_blend.attachmentCount = 1;
+		color_blend.pAttachments = &blend_attachment;
+
+		VkPipelineRenderingCreateInfo rendering_info{};
+		rendering_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+		rendering_info.colorAttachmentCount = 1;
+		rendering_info.pColorAttachmentFormats = &color_format;
+
+		VkGraphicsPipelineCreateInfo pipeline_info{};
+		pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+		pipeline_info.pNext = &rendering_info;
+		pipeline_info.stageCount = 2;
+		pipeline_info.pStages = shader_stages;
+		pipeline_info.pVertexInputState = &vertex_input;
+		pipeline_info.pInputAssemblyState = &input_assembly;
+		pipeline_info.pViewportState = &viewport_state;
+		pipeline_info.pRasterizationState = &rasterization;
+		pipeline_info.pMultisampleState = &multisample;
+		pipeline_info.pColorBlendState = &color_blend;
+		pipeline_info.pDynamicState = &dynamic_state;
+		pipeline_info.layout = pipeline.layout;
+
+		NEVAREA_ASSERT(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline.pipeline) == VK_SUCCESS,
+			"VULKAN PIPELINE", "Could not create graphics pipeline!");
+
+		vkDestroyShaderModule(device, vert_shader, nullptr);
+		vkDestroyShaderModule(device, frag_shader, nullptr);
+	}
+
+	void vulkan_pipeline_destroy(PipelineContext& pipeline, VkDevice device) {
+		vkDestroyPipeline(device, pipeline.pipeline, nullptr);
+		vkDestroyPipelineLayout(device, pipeline.layout, nullptr);
+	}
+}

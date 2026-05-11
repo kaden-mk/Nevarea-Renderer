@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <vector>
 #include <algorithm>
+#include <fstream>
 
 #include "lib/Core.hpp"
 
