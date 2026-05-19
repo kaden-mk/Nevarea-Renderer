@@ -1,4 +1,4 @@
-#include "lib/WindowSystem.hpp"
+#include "Platform/WindowSystemInternal.hpp"
 
 #include "Core/InternalState.hpp"
 #include "Core/n_pch.hpp"

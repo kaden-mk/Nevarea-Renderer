@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lib/WindowSystem.hpp"
+#include "Platform/WindowSystemInternal.hpp"
 #include "Core/n_pch.hpp"
 
 #include "VulkanDevice.hpp"
@@ -23,6 +23,8 @@ namespace Nevarea::Renderer {
 		SwapchainContext swapchain;
 		FrameContext frame_sync;
 		PipelineContext pipeline;
+
+		std::vector<Mesh> draw_list;
 	};
 
 	void vulkan_context_init(VulkanContext& context, WindowHandle window);

@@ -5,6 +5,7 @@
 
 #include "Core/InternalState.hpp"
 #include "Core/n_pch.hpp"
+#include <lib/Rendering.hpp>
 
 #define NEVAREA_VULKAN_VERSION VK_API_VERSION_1_4
 
@@ -100,15 +101,17 @@ namespace Nevarea::Renderer {
 		vulkan_context_create_surface(context.window, context.instance, context.surface.surface);
 		vulkan_device_init(context.device, context.instance, context.surface.surface);
 		vulkan_context_create_allocator(context.instance, context.device.physical_device, context.device.device, context.allocator);
-		vulkan_resources_init(context.resource_manager, context.allocator);
+		vulkan_resources_init(context.resource_manager, context.allocator, context.device.device);
 		vulkan_swapchain_init(context.swapchain, context.device, context.surface, context.window);
-		vulkan_pipeline_init(context.pipeline, context.device.device, context.swapchain.image_format);
+		vulkan_pipeline_init(context.pipeline, context.device.device, context.swapchain.image_format, context.resource_manager.descriptor_layout);
 		vulkan_frame_sync_init(context.frame_sync, context.device);
 	}
 
 	void vulkan_context_draw(VulkanContext& context) {
 		if (VkCommandBuffer cmd = begin_frame_rendering(context.frame_sync, context.swapchain, context.device, context.surface, context.window); cmd != VK_NULL_HANDLE) {
 			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, context.pipeline.pipeline);
+
+			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, context.pipeline.layout, 0, 1, &context.resource_manager.descriptor_set, 0, nullptr);
 
 			VkViewport viewport{};
 			viewport.width = static_cast<float>(context.swapchain.extent.width);
@@ -121,7 +124,18 @@ namespace Nevarea::Renderer {
 			vkCmdSetViewport(cmd, 0, 1, &viewport);
 			vkCmdSetScissor(cmd, 0, 1, &scissor);
 
-			vkCmdDraw(cmd, 3, 1, 0, 0);
+			for (const Mesh& handle : context.draw_list) {
+				MeshData& mesh = context.resource_manager.mesh_pool[handle.id];
+				
+				PushConstants push{};
+				push.vertex_buffer_address = vulkan_get_buffer_address(context.resource_manager, mesh.vertex_buffer);
+				vkCmdPushConstants(cmd, context.pipeline.layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &push);
+				
+				vkCmdDraw(cmd, mesh.vertex_count, 1, 0, 0);
+			}
+			context.draw_list.clear();
+
+			//vkCmdDraw(cmd, 3, 1, 0, 0);
 
 			end_frame_rendering(context.frame_sync, context.swapchain, context.device, context.surface, context.window, cmd);
 		}

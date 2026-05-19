@@ -88,4 +88,44 @@ namespace Nevarea {
 				break;
 		}
 	}
+
+	Mesh renderer_create_mesh(RenderContext context, Vertex* vertices, uint32_t count) {
+		RenderState* render_state = resolve(context);
+		
+		switch (render_state->api) {
+			case RenderingAPI::VULKAN: {
+				return Renderer::vulkan_create_mesh(render_state->vulkan.resource_manager, vertices, count);
+			}
+
+			case RenderingAPI::NONE: {
+				return { 0 };
+			}
+		}
+	}
+
+	void renderer_destroy_mesh(RenderContext context, Mesh handle) {
+		RenderState* render_state = resolve(context);
+
+		switch (render_state->api) {
+			case RenderingAPI::VULKAN:
+				Renderer::vulkan_destroy_mesh(render_state->vulkan.resource_manager, handle);
+				break;
+
+			case RenderingAPI::NONE:
+				break;
+		}
+	}
+
+	void renderer_submit_mesh(RenderContext context, Mesh mesh) {
+		RenderState* render_state = resolve(context);
+
+		switch (render_state->api) {
+			case RenderingAPI::VULKAN:
+				render_state->vulkan.draw_list.push_back(mesh);
+				break;
+
+			case RenderingAPI::NONE:
+				break;
+		}
+	}
 }

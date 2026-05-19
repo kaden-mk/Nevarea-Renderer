@@ -32,7 +32,7 @@ namespace Nevarea::Renderer {
 			"VULKAN PIPELINE", "Could not create shader module!")
 	}
 
-	void vulkan_pipeline_init(PipelineContext& pipeline, VkDevice device, VkFormat color_format) {
+	void vulkan_pipeline_init(PipelineContext& pipeline, VkDevice device, VkFormat color_format, VkDescriptorSetLayout descriptor_layout) {
 		FileData vert_code = read_file("shaders/triangle.vert.spv");
 		FileData frag_code = read_file("shaders/triangle.frag.spv");
 
@@ -42,10 +42,17 @@ namespace Nevarea::Renderer {
 		create_shader_module(device, vert_code, &vert_shader);
 		create_shader_module(device, frag_code, &frag_shader);
 
+		VkPushConstantRange push_constant_range{};
+		push_constant_range.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+		push_constant_range.offset = 0;
+		push_constant_range.size = sizeof(PushConstants);
+
 		VkPipelineLayoutCreateInfo layout_info{};
 		layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		layout_info.setLayoutCount = 0;
-		layout_info.pushConstantRangeCount = 0;
+		layout_info.pushConstantRangeCount = 1;
+		layout_info.pPushConstantRanges = &push_constant_range;
+		layout_info.setLayoutCount = 1;
+		layout_info.pSetLayouts = &descriptor_layout;
 
 		NEVAREA_ASSERT(vkCreatePipelineLayout(device, &layout_info, nullptr, &pipeline.layout) == VK_SUCCESS,
 			"VULKAN PIPELINE", "Could not create pipeline layout!");

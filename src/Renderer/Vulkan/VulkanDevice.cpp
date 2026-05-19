@@ -179,6 +179,7 @@ namespace Nevarea::Renderer {
 		features2.features.samplerAnisotropy = VK_TRUE;
 		features2.features.vertexPipelineStoresAndAtomics = VK_TRUE;
 		features2.features.fragmentStoresAndAtomics = VK_TRUE;
+		features2.features.shaderInt64 = VK_TRUE;
 		features2.pNext = &features13;
 
 		VkDeviceCreateInfo create_info{};
