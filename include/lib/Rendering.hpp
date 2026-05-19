@@ -20,13 +20,22 @@ namespace Nevarea {
 		uint32_t generation;
 	};
 
+	struct PipelineHandle {
+		uint32_t id;
+	};
+
 	RenderContext renderer_create(RenderingAPI api);
 	void renderer_destroy(RenderContext renderer);
 
 	void renderer_hook_window(RenderContext renderer, WindowHandle window);
 	void renderer_draw(RenderContext renderer);
 
+	PipelineHandle renderer_create_pipeline(RenderContext renderer, const char* vert, const char* frag);
+	PipelineHandle renderer_create_compute_pipeline(RenderContext renderer, const char* compute);
+
 	Mesh renderer_create_mesh(RenderContext renderer, Vertex* vertices, uint32_t count);
 	void renderer_destroy_mesh(RenderContext renderer, Mesh handle);
-	void renderer_submit_mesh(RenderContext renderer, Mesh mesh);
+
+	void renderer_submit_mesh(RenderContext renderer, Mesh mesh, PipelineHandle pipeline);
+	void renderer_dispatch_compute(RenderContext renderer, PipelineHandle pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, uint64_t buffer_address = 0);
 }

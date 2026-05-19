@@ -32,9 +32,50 @@ namespace Nevarea::Renderer {
 			"VULKAN PIPELINE", "Could not create shader module!")
 	}
 
-	void vulkan_pipeline_init(PipelineContext& pipeline, VkDevice device, VkFormat color_format, VkDescriptorSetLayout descriptor_layout) {
-		FileData vert_code = read_file("shaders/triangle.vert.spv");
-		FileData frag_code = read_file("shaders/triangle.frag.spv");
+	void vulkan_compute_pipeline_init(PipelineContext& pipeline, VkDevice device, VkDescriptorSetLayout descriptor_layout, const char* compute)
+	{
+		FileData compute_code = read_file(compute);
+		VkShaderModule compute_shader;
+
+		create_shader_module(device, compute_code, &compute_shader);
+	
+		VkPipelineShaderStageCreateInfo stage{};
+		stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+		stage.module = compute_shader;
+		stage.pName = "main";
+		
+		VkPushConstantRange push_range{};
+		push_range.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+		push_range.offset = 0;
+		push_range.size = sizeof(PushConstants);
+
+		VkPipelineLayoutCreateInfo layout_info{};
+		layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		layout_info.setLayoutCount = 1;
+		layout_info.pSetLayouts = &descriptor_layout;
+		layout_info.pushConstantRangeCount = 1;
+		layout_info.pPushConstantRanges = &push_range;
+
+		NEVAREA_ASSERT(vkCreatePipelineLayout(device, &layout_info, nullptr, &pipeline.layout) == VK_SUCCESS,
+			"VULKAN PIPELINE", "Failed to create compute pipeline layout!");
+
+		VkComputePipelineCreateInfo info{};
+		info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+		info.stage = stage;
+		info.layout = pipeline.layout;
+
+		NEVAREA_ASSERT(vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &info, nullptr, &pipeline.pipeline) == VK_SUCCESS,
+			"PIPELINE", "Failed to create compute pipeline!");
+
+		vkDestroyShaderModule(device, compute_shader, nullptr);
+
+		pipeline.bind_point = VK_PIPELINE_BIND_POINT_COMPUTE;
+	}
+
+	void vulkan_pipeline_init(PipelineContext& pipeline, VkDevice device, VkFormat color_format, VkDescriptorSetLayout descriptor_layout, const char* vert, const char* frag) {
+		FileData vert_code = read_file(vert);
+		FileData frag_code = read_file(frag);
 
 		VkShaderModule vert_shader;
 		VkShaderModule frag_shader;
@@ -130,6 +171,8 @@ namespace Nevarea::Renderer {
 
 		vkDestroyShaderModule(device, vert_shader, nullptr);
 		vkDestroyShaderModule(device, frag_shader, nullptr);
+
+		pipeline.bind_point = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	}
 
 	void vulkan_pipeline_destroy(PipelineContext& pipeline, VkDevice device) {

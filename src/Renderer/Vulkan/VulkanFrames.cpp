@@ -3,7 +3,8 @@
 
 namespace Nevarea::Renderer {
 	static NEVAREA_FORCE_INLINE VkCommandBuffer prepare_command_buffer(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window) {
-		vkWaitForFences(device.device, 1, &frame.in_flight[frame.current_frame], VK_TRUE, UINT64_MAX);
+		NEVAREA_ASSERT(vkWaitForFences(device.device, 1, &frame.in_flight[frame.current_frame], VK_TRUE, UINT64_MAX) == VK_SUCCESS,
+			"VULKAN FRAMES", "vkWaitForFences failed!");
 
 		VkResult result = vkAcquireNextImageKHR(device.device, swapchain.swapchain, UINT64_MAX,
 			frame.image_available[frame.current_frame], VK_NULL_HANDLE, &swapchain.current_image_index);
@@ -23,7 +24,7 @@ namespace Nevarea::Renderer {
 		return cmd;
 	}
 
-	VkCommandBuffer begin_frame_rendering(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window) {
+	VkCommandBuffer begin_frame(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window) {
 		VkCommandBuffer cmd = prepare_command_buffer(frame, swapchain, device, surface, window);
 		if (cmd == VK_NULL_HANDLE) return VK_NULL_HANDLE;
 
@@ -54,6 +55,10 @@ namespace Nevarea::Renderer {
 
 		vkCmdPipelineBarrier2(cmd, &dependency_info);
 
+		return cmd;
+	}
+
+	void begin_rendering(VkCommandBuffer cmd, SwapchainContext& swapchain) {
 		VkRenderingAttachmentInfo color_attachment{};
 		color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 		color_attachment.imageView = swapchain.image_views[swapchain.current_image_index];
@@ -70,8 +75,6 @@ namespace Nevarea::Renderer {
 		rendering_info.pColorAttachments = &color_attachment;
 
 		vkCmdBeginRendering(cmd, &rendering_info);
-
-		return cmd;
 	}
 
 	static NEVAREA_FORCE_INLINE void handle_queues(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkCommandBuffer cmd) {
@@ -100,7 +103,8 @@ namespace Nevarea::Renderer {
 		submit_info.commandBufferInfoCount = 1;
 		submit_info.pCommandBufferInfos = &cmd_info;
 
-		vkQueueSubmit2(device.graphics_queue, 1, &submit_info, frame.in_flight[frame.current_frame]);
+		NEVAREA_ASSERT(vkQueueSubmit2(device.graphics_queue, 1, &submit_info, frame.in_flight[frame.current_frame]) == VK_SUCCESS,
+			"VULKAN FRAMES", "vkQueueSubmit2 failed!");
 
 		VkSwapchainKHR swapchains[] = { swapchain.swapchain };
 

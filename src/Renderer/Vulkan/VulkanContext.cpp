@@ -103,42 +103,65 @@ namespace Nevarea::Renderer {
 		vulkan_context_create_allocator(context.instance, context.device.physical_device, context.device.device, context.allocator);
 		vulkan_resources_init(context.resource_manager, context.allocator, context.device.device);
 		vulkan_swapchain_init(context.swapchain, context.device, context.surface, context.window);
-		vulkan_pipeline_init(context.pipeline, context.device.device, context.swapchain.image_format, context.resource_manager.descriptor_layout);
 		vulkan_frame_sync_init(context.frame_sync, context.device);
 	}
 
 	void vulkan_context_draw(VulkanContext& context) {
-		if (VkCommandBuffer cmd = begin_frame_rendering(context.frame_sync, context.swapchain, context.device, context.surface, context.window); cmd != VK_NULL_HANDLE) {
-			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, context.pipeline.pipeline);
+		VkCommandBuffer cmd = begin_frame(context.frame_sync, context.swapchain, context.device, context.surface, context.window);
+		if (cmd == VK_NULL_HANDLE) return;
 
-			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, context.pipeline.layout, 0, 1, &context.resource_manager.descriptor_set, 0, nullptr);
-
-			VkViewport viewport{};
-			viewport.width = static_cast<float>(context.swapchain.extent.width);
-			viewport.height = static_cast<float>(context.swapchain.extent.height);
-			viewport.minDepth = 0.0f;
-			viewport.maxDepth = 1.0f;
-
-			VkRect2D scissor{ {0, 0}, context.swapchain.extent };
-
-			vkCmdSetViewport(cmd, 0, 1, &viewport);
-			vkCmdSetScissor(cmd, 0, 1, &scissor);
-
-			for (const Mesh& handle : context.draw_list) {
-				MeshData& mesh = context.resource_manager.mesh_pool[handle.id];
-				
-				PushConstants push{};
-				push.vertex_buffer_address = vulkan_get_buffer_address(context.resource_manager, mesh.vertex_buffer);
-				vkCmdPushConstants(cmd, context.pipeline.layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &push);
-				
-				vkCmdDraw(cmd, mesh.vertex_count, 1, 0, 0);
-			}
-			context.draw_list.clear();
-
-			//vkCmdDraw(cmd, 3, 1, 0, 0);
-
-			end_frame_rendering(context.frame_sync, context.swapchain, context.device, context.surface, context.window, cmd);
+		// TODO: barriers
+		for (const ComputeDispatch& dispatch : context.compute_dispatches) {
+			const PipelineContext& pipeline = context.pipelines[dispatch.pipeline.id];
+			vkCmdBindPipeline(cmd, pipeline.bind_point, pipeline.pipeline);
+			vkCmdBindDescriptorSets(cmd, pipeline.bind_point, pipeline.layout, 0, 1, &context.resource_manager.descriptor_set, 0, nullptr);
+			vkCmdPushConstants(cmd, pipeline.layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(PushConstants), &dispatch.push);
+			vkCmdDispatch(cmd, dispatch.groups_x, dispatch.groups_y, dispatch.groups_z);
 		}
+		context.compute_dispatches.clear();
+
+		begin_rendering(cmd, context.swapchain);
+
+		VkViewport viewport{};
+		viewport.width = static_cast<float>(context.swapchain.extent.width);
+		viewport.height = static_cast<float>(context.swapchain.extent.height);
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+
+		VkRect2D scissor{ {0, 0}, context.swapchain.extent };
+
+		vkCmdSetViewport(cmd, 0, 1, &viewport);
+		vkCmdSetScissor(cmd, 0, 1, &scissor);
+
+		// TODO: find a better way to do this, id hate to sort EVERY frame.
+		std::sort(context.draw_list.begin(), context.draw_list.end(),
+			[](const DrawCall& a, const DrawCall& b) {
+				return a.pipeline.id < b.pipeline.id;
+			});
+
+		uint32_t current_pipeline_id = UINT32_MAX;
+
+		for (const DrawCall& draw_call : context.draw_list) {
+			if (draw_call.pipeline.id != current_pipeline_id) {
+				current_pipeline_id = draw_call.pipeline.id;
+
+				const PipelineContext& pipeline = context.pipelines[current_pipeline_id];
+				vkCmdBindPipeline(cmd, pipeline.bind_point, pipeline.pipeline);
+				vkCmdBindDescriptorSets(cmd, pipeline.bind_point, pipeline.layout, 0, 1, &context.resource_manager.descriptor_set, 0, nullptr);
+			}
+
+			MeshData& mesh = context.resource_manager.mesh_pool[draw_call.mesh.id];
+				
+			PushConstants push{};
+			push.vertex_buffer_address = vulkan_get_buffer_address(context.resource_manager, mesh.vertex_buffer);
+			vkCmdPushConstants(cmd, context.pipelines[draw_call.pipeline.id].layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &push);
+				
+			vkCmdDraw(cmd, mesh.vertex_count, 1, 0, 0);
+		}
+
+		context.draw_list.clear();
+
+		end_frame_rendering(context.frame_sync, context.swapchain, context.device, context.surface, context.window, cmd);
 	}
 
 	void vulkan_context_destroy(VulkanContext& context)
@@ -151,7 +174,10 @@ namespace Nevarea::Renderer {
 		vulkan_resources_destroy(context.resource_manager);
 		vmaDestroyAllocator(context.allocator);
 
-		vulkan_pipeline_destroy(context.pipeline, context.device.device);
+		for (PipelineContext& pipeline : context.pipelines)
+			vulkan_pipeline_destroy(pipeline, context.device.device);
+
+		//vulkan_pipeline_destroy(context.pipeline, context.device.device);
 
 		vulkan_device_destroy(&context.device);
 

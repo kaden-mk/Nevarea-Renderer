@@ -35,36 +35,6 @@ target_link_libraries(NevareaRenderer PRIVATE Vulkan::Vulkan)
 
 target_link_libraries(NevareaRenderer PRIVATE VulkanMemoryAllocator)
 
-set(SHADER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/shaders)
-set(SHADER_BIN_DIR ${CMAKE_BINARY_DIR}/shaders)
-
-file(MAKE_DIRECTORY ${SHADER_BIN_DIR})
-
-set(SHADERS
-    ${SHADER_DIR}/triangle.vert
-    ${SHADER_DIR}/triangle.frag
-)
-
-add_custom_target(NevareaShaders)
-
-foreach(SHADER ${SHADERS})
-    get_filename_component(FILE_NAME ${SHADER} NAME)
-    set(SPV "${SHADER_BIN_DIR}/${FILE_NAME}.spv")
-
-    add_custom_command(
-        OUTPUT ${SPV}
-        COMMAND glslc ${SHADER} -o ${SPV}
-        DEPENDS ${SHADER}
-        COMMENT "Compiling shader ${FILE_NAME}"
-        VERBATIM
-    )
-
-    list(APPEND SPV_FILES ${SPV})
-endforeach()
-
-add_custom_target(NevareaShadersBin DEPENDS ${SPV_FILES})
-add_dependencies(NevareaRenderer NevareaShadersBin)
-
 set_target_properties(NevareaRenderer PROPERTIES
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED ON

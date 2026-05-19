@@ -1,5 +1,3 @@
-#pragma once
-
 #include "RenderState.hpp"
 #include "Core/InternalState.hpp"
 #include "Core/n_pch.hpp"
@@ -89,6 +87,54 @@ namespace Nevarea {
 		}
 	}
 
+	PipelineHandle renderer_create_compute_pipeline(RenderContext context, const char* compute) {
+		RenderState* render_state = resolve(context);
+
+		switch (render_state->api) {
+			case RenderingAPI::VULKAN: {
+				Renderer::PipelineContext pipeline;
+
+				Renderer::vulkan_compute_pipeline_init(pipeline,
+					render_state->vulkan.device.device,
+					render_state->vulkan.resource_manager.descriptor_layout,
+					compute
+				);
+
+				render_state->vulkan.pipelines.push_back(pipeline);
+				return { static_cast<uint32_t>(render_state->vulkan.pipelines.size() - 1) };
+			}
+
+			case RenderingAPI::NONE: {
+				return { 0 };
+			}
+		}
+	}
+
+	PipelineHandle renderer_create_pipeline(RenderContext context, const char* vert, const char* frag) {
+		RenderState* render_state = resolve(context);
+		
+		switch (render_state->api) {
+			case RenderingAPI::VULKAN: {
+				Renderer::PipelineContext pipeline;
+
+				Renderer::vulkan_pipeline_init(pipeline,
+					render_state->vulkan.device.device,
+					render_state->vulkan.swapchain.image_format,
+					render_state->vulkan.resource_manager.descriptor_layout,
+					vert,
+					frag
+				);
+
+				render_state->vulkan.pipelines.push_back(pipeline);
+				return { static_cast<uint32_t>(render_state->vulkan.pipelines.size() - 1) };
+			}
+
+			case RenderingAPI::NONE: {
+				return { 0 };
+			}
+		}
+	}
+
 	Mesh renderer_create_mesh(RenderContext context, Vertex* vertices, uint32_t count) {
 		RenderState* render_state = resolve(context);
 		
@@ -116,12 +162,25 @@ namespace Nevarea {
 		}
 	}
 
-	void renderer_submit_mesh(RenderContext context, Mesh mesh) {
+	void renderer_submit_mesh(RenderContext context, Mesh mesh, PipelineHandle pipeline) {
 		RenderState* render_state = resolve(context);
 
 		switch (render_state->api) {
 			case RenderingAPI::VULKAN:
-				render_state->vulkan.draw_list.push_back(mesh);
+				render_state->vulkan.draw_list.push_back({ mesh, pipeline });
+				break;
+
+			case RenderingAPI::NONE:
+				break;
+		}
+	}
+
+	void renderer_dispatch_compute(RenderContext context, PipelineHandle pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, uint64_t buffer_address) {
+		RenderState* render_state = resolve(context);
+
+		switch (render_state->api) {
+			case RenderingAPI::VULKAN:
+				render_state->vulkan.compute_dispatches.push_back({ pipeline, groups_x, groups_y, groups_z, { buffer_address } });
 				break;
 
 			case RenderingAPI::NONE:
