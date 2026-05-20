@@ -93,8 +93,7 @@ namespace Nevarea::Renderer {
 			view_info.subresourceRange.baseArrayLayer = 0;
 			view_info.subresourceRange.layerCount = 1;
 
-			NEVAREA_ASSERT(vkCreateImageView(device, &view_info, nullptr, &swapchain.image_views[i]) == VK_SUCCESS,
-				"VULKAN SWAPCHAIN", "Failed to create image view!");
+			VK_ASSERT(vkCreateImageView(device, &view_info, nullptr, &swapchain.image_views[i]));
 		}
 	}
 
@@ -127,8 +126,7 @@ namespace Nevarea::Renderer {
 		create_info.clipped = VK_TRUE;
 		create_info.oldSwapchain = old_swapchain;
 
-		NEVAREA_ASSERT(vkCreateSwapchainKHR(device.device, &create_info, nullptr, &swapchain.swapchain) == VK_SUCCESS,
-			"VULKAN SWAPCHAIN", "VkSwapchainKHR could not be created!");
+		VK_ASSERT(vkCreateSwapchainKHR(device.device, &create_info, nullptr, &swapchain.swapchain));
 
 		if (old_swapchain != VK_NULL_HANDLE)
 			vkDestroySwapchainKHR(device.device, old_swapchain, nullptr);
@@ -184,14 +182,9 @@ namespace Nevarea::Renderer {
 		fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-			NEVAREA_ASSERT(vkCreateSemaphore(device, &semaphore_info, nullptr, &frame_sync.image_available[i]) == VK_SUCCESS,
-				"VULKAN SWAPCHAIN", "Failed to create an avaliable image semaphore!");
-
-			NEVAREA_ASSERT(vkCreateSemaphore(device, &semaphore_info, nullptr, &frame_sync.render_finished[i]) == VK_SUCCESS,
-				"VULKAN SWAPCHAIN", "Failed to create a finished render's semaphore!");
-
-			NEVAREA_ASSERT(vkCreateFence(device, &fence_info, nullptr, &frame_sync.in_flight[i]) == VK_SUCCESS,
-				"VULKAN SWAPCHAIN", "Failed to create an in flight fence!");
+			VK_ASSERT(vkCreateSemaphore(device, &semaphore_info, nullptr, &frame_sync.image_available[i]));
+			VK_ASSERT(vkCreateSemaphore(device, &semaphore_info, nullptr, &frame_sync.render_finished[i]));
+			VK_ASSERT(vkCreateFence(device, &fence_info, nullptr, &frame_sync.in_flight[i]));
 		}
 
 		//QueueFamilyIndices indices = find_queue_families(physical_device, surface);

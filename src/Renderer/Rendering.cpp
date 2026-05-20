@@ -50,6 +50,7 @@ namespace Nevarea {
 		switch (render_state->api) {
 			case RenderingAPI::VULKAN:
 				Renderer::vulkan_context_destroy(render_state->vulkan);
+				render_state->vulkan.~VulkanContext();
 				break;
 
 			case RenderingAPI::NONE:

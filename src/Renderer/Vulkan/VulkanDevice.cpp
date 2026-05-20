@@ -197,8 +197,7 @@ namespace Nevarea::Renderer {
 		create_info.ppEnabledLayerNames = validation_layers.data();
 		#endif
 
-		NEVAREA_ASSERT(vkCreateDevice(device_context->physical_device, &create_info, nullptr, &device_context->device) == VK_SUCCESS,
-			"VULKAN DEVICE", "Could not create logical device!")
+		VK_ASSERT(vkCreateDevice(device_context->physical_device, &create_info, nullptr, &device_context->device));
 
 		device_context->graphics_family_index = indices.graphics_family.value();
 		device_context->compute_family_index = indices.compute_family.value();

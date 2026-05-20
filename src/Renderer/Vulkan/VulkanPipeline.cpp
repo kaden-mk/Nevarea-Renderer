@@ -28,8 +28,7 @@ namespace Nevarea::Renderer {
 		create_info.codeSize = shader_code.size();
 		create_info.pCode = reinterpret_cast<const uint32_t*>(shader_code.data());
 
-		NEVAREA_ASSERT(vkCreateShaderModule(device, &create_info, nullptr, shader_module) == VK_SUCCESS, 
-			"VULKAN PIPELINE", "Could not create shader module!")
+		VK_ASSERT(vkCreateShaderModule(device, &create_info, nullptr, shader_module));
 	}
 
 	void vulkan_compute_pipeline_init(PipelineContext& pipeline, VkDevice device, VkDescriptorSetLayout descriptor_layout, const char* compute)
@@ -57,16 +56,14 @@ namespace Nevarea::Renderer {
 		layout_info.pushConstantRangeCount = 1;
 		layout_info.pPushConstantRanges = &push_range;
 
-		NEVAREA_ASSERT(vkCreatePipelineLayout(device, &layout_info, nullptr, &pipeline.layout) == VK_SUCCESS,
-			"VULKAN PIPELINE", "Failed to create compute pipeline layout!");
+		VK_ASSERT(vkCreatePipelineLayout(device, &layout_info, nullptr, &pipeline.layout));
 
 		VkComputePipelineCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
 		info.stage = stage;
 		info.layout = pipeline.layout;
 
-		NEVAREA_ASSERT(vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &info, nullptr, &pipeline.pipeline) == VK_SUCCESS,
-			"PIPELINE", "Failed to create compute pipeline!");
+		VK_ASSERT(vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &info, nullptr, &pipeline.pipeline));
 
 		vkDestroyShaderModule(device, compute_shader, nullptr);
 
@@ -95,8 +92,7 @@ namespace Nevarea::Renderer {
 		layout_info.setLayoutCount = 1;
 		layout_info.pSetLayouts = &descriptor_layout;
 
-		NEVAREA_ASSERT(vkCreatePipelineLayout(device, &layout_info, nullptr, &pipeline.layout) == VK_SUCCESS,
-			"VULKAN PIPELINE", "Could not create pipeline layout!");
+		VK_ASSERT(vkCreatePipelineLayout(device, &layout_info, nullptr, &pipeline.layout));
 
 		VkPipelineShaderStageCreateInfo shader_stages[2]{};
 		shader_stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -166,8 +162,7 @@ namespace Nevarea::Renderer {
 		pipeline_info.pDynamicState = &dynamic_state;
 		pipeline_info.layout = pipeline.layout;
 
-		NEVAREA_ASSERT(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline.pipeline) == VK_SUCCESS,
-			"VULKAN PIPELINE", "Could not create graphics pipeline!");
+		VK_ASSERT(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline.pipeline));
 
 		vkDestroyShaderModule(device, vert_shader, nullptr);
 		vkDestroyShaderModule(device, frag_shader, nullptr);

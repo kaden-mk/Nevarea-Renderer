@@ -3,8 +3,7 @@
 
 namespace Nevarea::Renderer {
 	static NEVAREA_FORCE_INLINE VkCommandBuffer prepare_command_buffer(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window) {
-		NEVAREA_ASSERT(vkWaitForFences(device.device, 1, &frame.in_flight[frame.current_frame], VK_TRUE, UINT64_MAX) == VK_SUCCESS,
-			"VULKAN FRAMES", "vkWaitForFences failed!");
+		VK_ASSERT(vkWaitForFences(device.device, 1, &frame.in_flight[frame.current_frame], VK_TRUE, UINT64_MAX));
 
 		VkResult result = vkAcquireNextImageKHR(device.device, swapchain.swapchain, UINT64_MAX,
 			frame.image_available[frame.current_frame], VK_NULL_HANDLE, &swapchain.current_image_index);
@@ -103,8 +102,7 @@ namespace Nevarea::Renderer {
 		submit_info.commandBufferInfoCount = 1;
 		submit_info.pCommandBufferInfos = &cmd_info;
 
-		NEVAREA_ASSERT(vkQueueSubmit2(device.graphics_queue, 1, &submit_info, frame.in_flight[frame.current_frame]) == VK_SUCCESS,
-			"VULKAN FRAMES", "vkQueueSubmit2 failed!");
+		VK_ASSERT(vkQueueSubmit2(device.graphics_queue, 1, &submit_info, frame.in_flight[frame.current_frame]));
 
 		VkSwapchainKHR swapchains[] = { swapchain.swapchain };
 

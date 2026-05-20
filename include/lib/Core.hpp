@@ -13,6 +13,7 @@
 
 #ifndef NEVAREA_DEBUG
 	#define NEVAREA_ASSERT(expr, context, message) ((void)0)
+	#define VK_ASSERT(expr) (void)(expr)
 #else
 	#define NEVAREA_ASSERT(expr, context, message) \
 		if (!(expr)) { \
@@ -20,6 +21,16 @@
 			std::cerr << "File: " << __FILE__ << " Line: " << __LINE__ << std::endl; \
 			NEVAREA_BREAK(); \
 		}
+
+	#define VK_ASSERT(expr) \
+		do { \
+			VkResult _vk_result = (expr); \
+			if (_vk_result != VK_SUCCESS) { \
+				std::cerr << "[VK_ASSERT]: " << #expr << " returned " << string_VkResult(_vk_result) << std::endl; \
+				std::cerr << "File: " << __FILE__ << " Line: " << __LINE__ << std::endl; \
+				NEVAREA_BREAK(); \
+			} \
+		} while(0)
 #endif
 
 #if defined(_WIN32)

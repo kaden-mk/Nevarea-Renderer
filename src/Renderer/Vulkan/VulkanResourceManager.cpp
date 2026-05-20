@@ -17,8 +17,7 @@ namespace Nevarea::Renderer {
 		create_info.poolSizeCount = 2;
 		create_info.pPoolSizes = pool_sizes;
 
-		NEVAREA_ASSERT(vkCreateDescriptorPool(manager.device, &create_info, nullptr, &manager.descriptor_pool) == VK_SUCCESS,
-			"RESOURCE MANAGER", "Failed to create descriptor pool!");
+		VK_ASSERT(vkCreateDescriptorPool(manager.device, &create_info, nullptr, &manager.descriptor_pool));
 	}
 
 	void vulkan_create_descriptor_layout(ResourceManager& manager) {
@@ -42,8 +41,7 @@ namespace Nevarea::Renderer {
 		layout_info.bindingCount = 1;
 		layout_info.pBindings = &binding;
 
-		NEVAREA_ASSERT(vkCreateDescriptorSetLayout(manager.device, &layout_info, nullptr, &manager.descriptor_layout) == VK_SUCCESS,
-			"RESOURCE MANAGER", "Failed to create descriptor layout!");
+		VK_ASSERT(vkCreateDescriptorSetLayout(manager.device, &layout_info, nullptr, &manager.descriptor_layout));
 	}
 
 	void vulkan_init_descriptor_set(ResourceManager& manager) {
@@ -53,8 +51,7 @@ namespace Nevarea::Renderer {
 		info.descriptorSetCount = 1;
 		info.pSetLayouts = &manager.descriptor_layout;
 
-		NEVAREA_ASSERT(vkAllocateDescriptorSets(manager.device, &info, &manager.descriptor_set) == VK_SUCCESS,
-			"VULKAN CONTEXT", "Failed to allocate descriptor set!");
+		VK_ASSERT(vkAllocateDescriptorSets(manager.device, &info, &manager.descriptor_set));
 	}
 
 	void vulkan_resources_init(ResourceManager& manager, VmaAllocator allocator, VkDevice device)
@@ -111,8 +108,7 @@ namespace Nevarea::Renderer {
 		VkBuffer buffer = VK_NULL_HANDLE;
 		VmaAllocation allocation = VK_NULL_HANDLE;
 
-		NEVAREA_ASSERT(vmaCreateBuffer(manager.allocator, &buffer_create_info, &allocation_create_info, &buffer, &allocation, nullptr) == VK_SUCCESS,
-			"RESOURCE MANAGER", "vmaCreateBuffer failed!");
+		VK_ASSERT(vmaCreateBuffer(manager.allocator, &buffer_create_info, &allocation_create_info, &buffer, &allocation, nullptr));
 
 		uint32_t index;
 		if (!manager.free_list.empty()) {

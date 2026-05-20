@@ -47,8 +47,7 @@ namespace Nevarea::Renderer {
 		instance_create_info.pNext = &debug_create_info;
 		#endif
 
-		NEVAREA_ASSERT(vkCreateInstance(&instance_create_info, nullptr, &instance) == VK_SUCCESS,
-			"VULKAN CONTEXT", "VkInstance could not be created!");
+		VK_ASSERT(vkCreateInstance(&instance_create_info, nullptr, &instance));
 	}
 
 	static void vulkan_context_debug_messenger(VkInstance instance, VkDebugUtilsMessengerEXT& debug_messenger)
@@ -63,9 +62,8 @@ namespace Nevarea::Renderer {
 
 		VkDebugUtilsMessengerCreateInfoEXT create_info{};
 		populate_debug_create_info(create_info);
-		
-		NEVAREA_ASSERT(create_debug_utils_messenger_ext(instance, &create_info, nullptr, &debug_messenger) == VK_SUCCESS,
-			"VULKAN DEBUG CONTEXT", "Debug Messenger could not be setup!");
+
+		VK_ASSERT(create_debug_utils_messenger_ext(instance, &create_info, nullptr, &debug_messenger));
 	}
 
 	static void vulkan_context_create_surface(WindowHandle window, VkInstance instance, VkSurfaceKHR& surface)
@@ -76,8 +74,7 @@ namespace Nevarea::Renderer {
 			create_info.hwnd = window_get_hwnd(window);
 			create_info.hinstance = window_get_hinstance(window);
 
-			NEVAREA_ASSERT(vkCreateWin32SurfaceKHR(instance, &create_info, nullptr, &surface) == VK_SUCCESS,
-				"VULKAN CONTEXT", "Could not create Win32 Surface!");
+			VK_ASSERT(vkCreateWin32SurfaceKHR(instance, &create_info, nullptr, &surface));
 		#endif
 	}
 
@@ -89,8 +86,7 @@ namespace Nevarea::Renderer {
 		create_info.vulkanApiVersion = NEVAREA_VULKAN_VERSION;
 		create_info.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 
-		NEVAREA_ASSERT(vmaCreateAllocator(&create_info, &allocator) == VK_SUCCESS,
-			"VULKAN CONTEXT", "Could not create VulkanMemoryAllocator!");
+		VK_ASSERT(vmaCreateAllocator(&create_info, &allocator));
 	}
 
 	void vulkan_context_init(VulkanContext& context, WindowHandle window) {
@@ -176,8 +172,6 @@ namespace Nevarea::Renderer {
 
 		for (PipelineContext& pipeline : context.pipelines)
 			vulkan_pipeline_destroy(pipeline, context.device.device);
-
-		//vulkan_pipeline_destroy(context.pipeline, context.device.device);
 
 		vulkan_device_destroy(&context.device);
 
