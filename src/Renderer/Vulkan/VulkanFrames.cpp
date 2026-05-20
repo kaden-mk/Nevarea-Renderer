@@ -19,7 +19,7 @@ namespace Nevarea::Renderer {
 		VkCommandBuffer cmd = frame.command_buffers[frame.current_frame];
 		NEVAREA_ASSERT(cmd != VK_NULL_HANDLE, "VULKAN FRAMES", "The Drawing Command Buffer is Null!");
 
-		vkResetCommandBuffer(cmd, 0);
+		VK_ASSERT(vkResetCommandBuffer(cmd, 0));
 
 		return cmd;
 	}
@@ -34,7 +34,7 @@ namespace Nevarea::Renderer {
 
 		VkCommandBufferBeginInfo begin_info{};
 		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		vkBeginCommandBuffer(cmd, &begin_info);
+		VK_ASSERT(vkBeginCommandBuffer(cmd, &begin_info));
 
 		VkImageMemoryBarrier2 begin_barrier{};
 		begin_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
@@ -151,7 +151,7 @@ namespace Nevarea::Renderer {
 
 		vkCmdPipelineBarrier2(cmd, &dependency_info);
 
-		vkEndCommandBuffer(cmd);
+		VK_ASSERT(vkEndCommandBuffer(cmd));
 
 		handle_queues(frame, swapchain, device, surface, window, cmd);
 

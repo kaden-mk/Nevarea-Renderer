@@ -193,7 +193,7 @@ namespace Nevarea::Renderer {
 		pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 		pool_info.queueFamilyIndex = device_context.graphics_family_index;
 
-		vkCreateCommandPool(device, &pool_info, nullptr, &frame_sync.command_pool);
+		VK_ASSERT(vkCreateCommandPool(device, &pool_info, nullptr, &frame_sync.command_pool));
 
 		frame_sync.command_buffers.resize(MAX_FRAMES_IN_FLIGHT);
 
@@ -203,7 +203,7 @@ namespace Nevarea::Renderer {
 		allocation_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 		allocation_info.commandBufferCount = MAX_FRAMES_IN_FLIGHT;
 
-		vkAllocateCommandBuffers(device, &allocation_info, frame_sync.command_buffers.data());
+		VK_ASSERT(vkAllocateCommandBuffers(device, &allocation_info, frame_sync.command_buffers.data()));
 	}
 
 	void vulkan_frame_sync_destroy(FrameContext& frame_sync, VkDevice device)
