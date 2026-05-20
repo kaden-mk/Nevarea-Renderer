@@ -5,6 +5,7 @@
 
 #include "Core/InternalState.hpp"
 #include "Core/n_pch.hpp"
+#include <lib/Rendering.hpp>
 
 namespace Nevarea::Renderer {
 	struct SwapchainContext {
@@ -27,6 +28,8 @@ namespace Nevarea::Renderer {
 
         VkCommandPool command_pool;
         std::vector<VkCommandBuffer> command_buffers;
+
+        DeletionQueue deletion_queues[MAX_FRAMES_IN_FLIGHT];
     };
 
     struct SurfaceContext {

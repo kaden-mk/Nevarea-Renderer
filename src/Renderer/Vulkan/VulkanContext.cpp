@@ -164,6 +164,8 @@ namespace Nevarea::Renderer {
 	{
 		vkDeviceWaitIdle(context.device.device);
 
+		for (auto& queue : context.frame_sync.deletion_queues) vulkan_resources_flush_deletors(queue);
+
 		vulkan_frame_sync_destroy(context.frame_sync, context.device.device);
 		vulkan_swapchain_destroy(context.swapchain, context.device.device);
 
@@ -171,7 +173,7 @@ namespace Nevarea::Renderer {
 		vmaDestroyAllocator(context.allocator);
 
 		for (PipelineContext& pipeline : context.pipelines)
-			vulkan_pipeline_destroy(pipeline, context.device.device);
+			vulkan_pipeline_destroy(pipeline, context.device.device, context.frame_sync);
 
 		vulkan_device_destroy(&context.device);
 

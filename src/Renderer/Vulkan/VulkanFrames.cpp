@@ -1,5 +1,6 @@
 #include "VulkanFrames.hpp"
 #include "Core/InternalState.hpp"
+#include "VulkanResourceManager.hpp"
 
 namespace Nevarea::Renderer {
 	static NEVAREA_FORCE_INLINE VkCommandBuffer prepare_command_buffer(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window) {
@@ -24,6 +25,10 @@ namespace Nevarea::Renderer {
 	}
 
 	VkCommandBuffer begin_frame(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window) {
+		VK_ASSERT(vkWaitForFences(device.device, 1, &frame.in_flight[frame.current_frame], VK_TRUE, UINT64_MAX));
+		
+		vulkan_resources_flush_deletors(frame.deletion_queues[frame.current_frame]);
+
 		VkCommandBuffer cmd = prepare_command_buffer(frame, swapchain, device, surface, window);
 		if (cmd == VK_NULL_HANDLE) return VK_NULL_HANDLE;
 
@@ -150,6 +155,6 @@ namespace Nevarea::Renderer {
 
 		handle_queues(frame, swapchain, device, surface, window, cmd);
 
-		frame.current_frame = (frame.current_frame + 1) % Internal::get_renderer_config().max_frames_in_flight;
+		frame.current_frame = (frame.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
 }

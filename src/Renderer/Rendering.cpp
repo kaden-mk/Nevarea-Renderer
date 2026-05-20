@@ -136,6 +136,20 @@ namespace Nevarea {
 		}
 	}
 
+	void renderer_destroy_pipeline(RenderContext context, PipelineHandle pipeline) {
+		RenderState* render_state = resolve(context);
+		
+		switch (render_state->api) {
+			case RenderingAPI::VULKAN:
+				auto& vulkan_renderer = render_state->vulkan;
+				Renderer::vulkan_pipeline_destroy(vulkan_renderer.pipelines[pipeline.id], vulkan_renderer.device.device, vulkan_renderer.frame_sync);
+				break;
+
+			case RenderingAPI::NONE:
+				break;
+		}
+	}
+
 	Mesh renderer_create_mesh(RenderContext context, Vertex* vertices, uint32_t count) {
 		RenderState* render_state = resolve(context);
 		
@@ -155,7 +169,7 @@ namespace Nevarea {
 
 		switch (render_state->api) {
 			case RenderingAPI::VULKAN:
-				Renderer::vulkan_destroy_mesh(render_state->vulkan.resource_manager, handle);
+				Renderer::vulkan_destroy_mesh(render_state->vulkan.resource_manager, handle, render_state->vulkan.frame_sync);
 				break;
 
 			case RenderingAPI::NONE:

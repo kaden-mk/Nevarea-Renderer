@@ -2,6 +2,10 @@
 
 #include "WindowSystem.hpp"
 
+#ifndef MAX_FRAMES_IN_FLIGHT
+#define MAX_FRAMES_IN_FLIGHT 2
+#endif
+
 namespace Nevarea {
 	enum class RenderingAPI {
 		NONE,
@@ -32,6 +36,7 @@ namespace Nevarea {
 
 	PipelineHandle renderer_create_pipeline(RenderContext renderer, const char* vert, const char* frag);
 	PipelineHandle renderer_create_compute_pipeline(RenderContext renderer, const char* compute);
+	void renderer_destroy_pipeline(RenderContext renderer, PipelineHandle pipeline);
 
 	Mesh renderer_create_mesh(RenderContext renderer, Vertex* vertices, uint32_t count);
 	void renderer_destroy_mesh(RenderContext renderer, Mesh handle);

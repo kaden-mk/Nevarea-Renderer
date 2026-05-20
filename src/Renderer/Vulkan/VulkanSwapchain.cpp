@@ -163,10 +163,7 @@ namespace Nevarea::Renderer {
 
 	void vulkan_frame_sync_init(FrameContext& frame_sync, DeviceContext& device_context)
 	{
-		RendererConfig config = Internal::get_renderer_config();
 		VkDevice device = device_context.device;
-
-		uint32_t MAX_FRAMES_IN_FLIGHT = config.max_frames_in_flight;
 
 		frame_sync.current_frame = 0;
 
@@ -211,7 +208,7 @@ namespace Nevarea::Renderer {
 
 	void vulkan_frame_sync_destroy(FrameContext& frame_sync, VkDevice device)
 	{
-		for (size_t i = 0; i < Internal::get_renderer_config().max_frames_in_flight; i++) {
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 			vkDestroySemaphore(device, frame_sync.image_available[i], nullptr);
 			vkDestroySemaphore(device, frame_sync.render_finished[i], nullptr);
 			vkDestroyFence(device, frame_sync.in_flight[i], nullptr);

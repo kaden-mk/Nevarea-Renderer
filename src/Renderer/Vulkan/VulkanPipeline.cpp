@@ -1,6 +1,8 @@
 #include "Core/n_pch.hpp"
 
 #include "VulkanPipeline.hpp"
+#include "VulkanFrames.hpp"
+#include "VulkanResourceManager.hpp"
 
 using FileData = std::vector<char>;
 
@@ -170,8 +172,10 @@ namespace Nevarea::Renderer {
 		pipeline.bind_point = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	}
 
-	void vulkan_pipeline_destroy(PipelineContext& pipeline, VkDevice device) {
-		vkDestroyPipeline(device, pipeline.pipeline, nullptr);
-		vkDestroyPipelineLayout(device, pipeline.layout, nullptr);
+	void vulkan_pipeline_destroy(PipelineContext& pipeline, VkDevice device, FrameContext& frame) {
+		vulkan_resources_push_deletor(frame.deletion_queues[frame.current_frame], [device, pipeline]() {
+			vkDestroyPipeline(device, pipeline.pipeline, nullptr);
+			vkDestroyPipelineLayout(device, pipeline.layout, nullptr);
+		});
 	}
 }

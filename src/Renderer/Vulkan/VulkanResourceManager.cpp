@@ -94,6 +94,17 @@ namespace Nevarea::Renderer {
 		vkDestroyDescriptorPool(manager.device, manager.descriptor_pool, nullptr);
 	}
 
+	void vulkan_resources_push_deletor(DeletionQueue& deletion_queue, std::function<void()>&& fn)
+	{
+		deletion_queue.deletors.push_back(std::move(fn));
+	}
+
+	void vulkan_resources_flush_deletors(DeletionQueue& deletion_queue)
+	{
+		for (auto& fn : deletion_queue.deletors) fn();
+		deletion_queue.deletors.clear();
+	}
+
 	BufferHandle vulkan_create_buffer(ResourceManager& manager, const BufferDescription& buffer_description)
 	{
 		VkBufferCreateInfo buffer_create_info{};
@@ -193,14 +204,28 @@ namespace Nevarea::Renderer {
 		return { index, manager.mesh_generation_pool[index] };
 	}
 
-	void vulkan_destroy_mesh(ResourceManager& manager, Mesh handle) {
+	void vulkan_destroy_mesh(ResourceManager& manager, Mesh handle, FrameContext& frame) {
 		NEVAREA_ASSERT(handle.id < manager.mesh_pool.size(),
 			"RESOURCE MANAGER", "Mesh handle index out of range!");
 
 		NEVAREA_ASSERT(handle.generation == manager.mesh_generation_pool[handle.id],
 			"RESOURCE MANAGER", "Stale Mesh handle (generation mismatch)!");
 
-		vulkan_destroy_buffer(manager, manager.mesh_pool[handle.id].vertex_buffer);
+		MeshData& mesh = manager.mesh_pool[handle.id];
+		BufferHandle vertex_buffer = mesh.vertex_buffer;
+		uint32_t buffer_id = vertex_buffer.index;
+
+		VmaAllocator allocator = manager.allocator;
+		VkBuffer buffer = manager.buffer_pool[buffer_id];
+		VmaAllocation allocation = manager.allocation_pool[buffer_id];
+
+		vulkan_resources_push_deletor(frame.deletion_queues[frame.current_frame], [allocator, buffer, allocation]() {
+			vmaDestroyBuffer(allocator, buffer, allocation);
+		});
+	
+		manager.buffer_pool[buffer_id] = VK_NULL_HANDLE;
+		manager.generation_pool[buffer_id]++;
+		manager.free_list.push_back(buffer_id);
 
 		manager.mesh_generation_pool[handle.id]++;
 		manager.mesh_free_list.push_back(handle.id);

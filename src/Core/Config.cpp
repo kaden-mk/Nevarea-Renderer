@@ -22,6 +22,5 @@ namespace Nevarea::Internal {
         g_is_initialized = true;
     }
 
-    const WindowConfig& get_window_config() { return g_engine_config.window; }
     const RendererConfig& get_renderer_config() { return g_engine_config.renderer; }
 }
