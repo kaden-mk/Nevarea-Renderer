@@ -20,6 +20,7 @@ namespace Nevarea::Renderer {
 		VkDeviceSize size;
 		VkBufferUsageFlags usage;        
 		VmaMemoryUsage memory_usage;
+		const char* name = "nevarea_vulkan_buffer";
 	};
 
 	struct MeshData {

@@ -1,6 +1,7 @@
 #include "VulkanDevice.hpp"
 #include "VulkanSpec.hpp"
 #include "VulkanSwapchain.hpp"
+#include "VulkanDebug.hpp"
 
 namespace Nevarea::Renderer {
 	QueueFamilyIndices find_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface) {
@@ -146,6 +147,8 @@ namespace Nevarea::Renderer {
 	{
 		vulkan_device_pick_physical_device(instance, surface, &device_context);
 		vulkan_device_create_logical_device(surface, &device_context);
+
+		vulkan_debug_init(device_context.device);
 	}
 
 	void vulkan_device_destroy(DeviceContext* device_context)
@@ -243,5 +246,12 @@ namespace Nevarea::Renderer {
 		vkGetDeviceQueue(device_context->device, indices.graphics_family.value(), 0, &device_context->graphics_queue);
 		vkGetDeviceQueue(device_context->device, indices.present_family.value(), 0, &device_context->present_queue);
 		vkGetDeviceQueue(device_context->device, indices.compute_family.value(), 0, &device_context->compute_queue);
+
+		vulkan_debug_init(device_context->device);
+
+		VK_NAME(device_context->device, VK_OBJECT_TYPE_DEVICE, device_context->device, "nevarea_device");
+		VK_NAME(device_context->device, VK_OBJECT_TYPE_QUEUE, device_context->graphics_queue, "graphics_queue");
+		VK_NAME(device_context->device, VK_OBJECT_TYPE_QUEUE, device_context->present_queue, "present_queue");
+		VK_NAME(device_context->device, VK_OBJECT_TYPE_QUEUE, device_context->compute_queue, "compute_queue");
 	}
 }

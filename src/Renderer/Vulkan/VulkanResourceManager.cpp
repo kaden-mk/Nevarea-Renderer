@@ -1,4 +1,5 @@
 #include "VulkanResourceManager.hpp"
+#include "VulkanDebug.hpp"
 
 #include "lib/Core.hpp"
 #include "lib/Rendering.hpp"
@@ -18,6 +19,7 @@ namespace Nevarea::Renderer {
 		create_info.pPoolSizes = pool_sizes;
 
 		VK_ASSERT(vkCreateDescriptorPool(manager.device, &create_info, nullptr, &manager.descriptor_pool));
+		VK_NAME(manager.device, VK_OBJECT_TYPE_DESCRIPTOR_POOL, manager.descriptor_pool, "descriptor_pool");
 	}
 
 	void vulkan_create_descriptor_layout(ResourceManager& manager) {
@@ -42,6 +44,7 @@ namespace Nevarea::Renderer {
 		layout_info.pBindings = &binding;
 
 		VK_ASSERT(vkCreateDescriptorSetLayout(manager.device, &layout_info, nullptr, &manager.descriptor_layout));
+		VK_NAME(manager.device, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, manager.descriptor_layout, "descriptor_set_layout");
 	}
 
 	void vulkan_init_descriptor_set(ResourceManager& manager) {
@@ -52,6 +55,7 @@ namespace Nevarea::Renderer {
 		info.pSetLayouts = &manager.descriptor_layout;
 
 		VK_ASSERT(vkAllocateDescriptorSets(manager.device, &info, &manager.descriptor_set));
+		VK_NAME(manager.device, VK_OBJECT_TYPE_DESCRIPTOR_SET, manager.descriptor_set, "descriptor_set");
 	}
 
 	void vulkan_resources_init(ResourceManager& manager, VmaAllocator allocator, VkDevice device)
@@ -120,6 +124,7 @@ namespace Nevarea::Renderer {
 		VmaAllocation allocation = VK_NULL_HANDLE;
 
 		VK_ASSERT(vmaCreateBuffer(manager.allocator, &buffer_create_info, &allocation_create_info, &buffer, &allocation, nullptr));
+		VK_NAME(manager.device, VK_OBJECT_TYPE_BUFFER, buffer, buffer_description.name);
 
 		uint32_t index;
 		if (!manager.free_list.empty()) {
@@ -179,6 +184,7 @@ namespace Nevarea::Renderer {
 		description.size = sizeof(Vertex) * count;
 		description.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 		description.memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+		description.name = "mesh_vertex_buffer";
 
 		BufferHandle handle = vulkan_create_buffer(manager, description);
 

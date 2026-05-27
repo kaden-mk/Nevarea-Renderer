@@ -1,4 +1,5 @@
 #include "VulkanSwapchain.hpp"
+#include "VulkanDebug.hpp"
 
 namespace Nevarea::Renderer {
 	void query_swapchain_support(VkPhysicalDevice physical_device, SurfaceContext& surface) {
@@ -94,6 +95,10 @@ namespace Nevarea::Renderer {
 			view_info.subresourceRange.layerCount = 1;
 
 			VK_ASSERT(vkCreateImageView(device, &view_info, nullptr, &swapchain.image_views[i]));
+
+			char name[64];
+			std::snprintf(name, sizeof(name), "swapchain_image_view[%zu]", i);
+			VK_NAME(device, VK_OBJECT_TYPE_IMAGE_VIEW, swapchain.image_views[i], name);
 		}
 	}
 
@@ -127,6 +132,7 @@ namespace Nevarea::Renderer {
 		create_info.oldSwapchain = old_swapchain;
 
 		VK_ASSERT(vkCreateSwapchainKHR(device.device, &create_info, nullptr, &swapchain.swapchain));
+		VK_NAME(device.device, VK_OBJECT_TYPE_SWAPCHAIN_KHR, swapchain.swapchain, "swapchain");
 
 		if (old_swapchain != VK_NULL_HANDLE)
 			vkDestroySwapchainKHR(device.device, old_swapchain, nullptr);
@@ -182,6 +188,14 @@ namespace Nevarea::Renderer {
 			VK_ASSERT(vkCreateSemaphore(device, &semaphore_info, nullptr, &frame_sync.image_available[i]));
 			VK_ASSERT(vkCreateSemaphore(device, &semaphore_info, nullptr, &frame_sync.render_finished[i]));
 			VK_ASSERT(vkCreateFence(device, &fence_info, nullptr, &frame_sync.in_flight[i]));
+
+			char name[64];
+			std::snprintf(name, sizeof(name), "image_available[%zu]", i);
+			VK_NAME(device, VK_OBJECT_TYPE_SEMAPHORE, frame_sync.image_available[i], name);
+			std::snprintf(name, sizeof(name), "render_finished[%zu]", i);
+			VK_NAME(device, VK_OBJECT_TYPE_SEMAPHORE, frame_sync.render_finished[i], name);
+			std::snprintf(name, sizeof(name), "in_flight[%zu]", i);
+			VK_NAME(device, VK_OBJECT_TYPE_FENCE, frame_sync.in_flight[i], name);
 		}
 
 		//QueueFamilyIndices indices = find_queue_families(physical_device, surface);
@@ -194,6 +208,7 @@ namespace Nevarea::Renderer {
 		pool_info.queueFamilyIndex = device_context.graphics_family_index;
 
 		VK_ASSERT(vkCreateCommandPool(device, &pool_info, nullptr, &frame_sync.command_pool));
+		VK_NAME(device, VK_OBJECT_TYPE_COMMAND_POOL, frame_sync.command_pool, "frame_command_pool");
 
 		frame_sync.command_buffers.resize(MAX_FRAMES_IN_FLIGHT);
 
@@ -204,6 +219,12 @@ namespace Nevarea::Renderer {
 		allocation_info.commandBufferCount = MAX_FRAMES_IN_FLIGHT;
 
 		VK_ASSERT(vkAllocateCommandBuffers(device, &allocation_info, frame_sync.command_buffers.data()));
+
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+			char name[64];
+			std::snprintf(name, sizeof(name), "command_buffer[%zu]", i);
+			VK_NAME(device, VK_OBJECT_TYPE_COMMAND_BUFFER, frame_sync.command_buffers[i], name);
+		}
 	}
 
 	void vulkan_frame_sync_destroy(FrameContext& frame_sync, VkDevice device)

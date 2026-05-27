@@ -13,7 +13,7 @@ add_library(NevareaRenderer STATIC
     src/Core/Config.cpp
     src/Renderer/Vulkan/VulkanFrames.cpp
     src/Renderer/Rendering.cpp
- "src/Renderer/Vulkan/VulkanAllocator.cpp" "src/Renderer/Vulkan/VulkanResourceManager.cpp" "src/Renderer/Vulkan/VulkanPipeline.cpp")
+ "src/Renderer/Vulkan/VulkanAllocator.cpp" "src/Renderer/Vulkan/VulkanResourceManager.cpp" "src/Renderer/Vulkan/VulkanPipeline.cpp" "src/Renderer/Vulkan/VulkanDebug.cpp")
 
  target_precompile_headers(NevareaRenderer PRIVATE
     src/Core/n_pch.hpp

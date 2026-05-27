@@ -3,6 +3,7 @@
 #include "VulkanPipeline.hpp"
 #include "VulkanFrames.hpp"
 #include "VulkanResourceManager.hpp"
+#include "VulkanDebug.hpp"
 
 using FileData = std::vector<char>;
 
@@ -59,6 +60,7 @@ namespace Nevarea::Renderer {
 		layout_info.pPushConstantRanges = &push_range;
 
 		VK_ASSERT(vkCreatePipelineLayout(device, &layout_info, nullptr, &pipeline.layout));
+		VK_NAME(device, VK_OBJECT_TYPE_PIPELINE_LAYOUT, pipeline.layout, compute);
 
 		VkComputePipelineCreateInfo info{};
 		info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
@@ -66,6 +68,7 @@ namespace Nevarea::Renderer {
 		info.layout = pipeline.layout;
 
 		VK_ASSERT(vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &info, nullptr, &pipeline.pipeline));
+		VK_NAME(device, VK_OBJECT_TYPE_PIPELINE, pipeline.pipeline, compute);
 
 		vkDestroyShaderModule(device, compute_shader, nullptr);
 
@@ -95,6 +98,7 @@ namespace Nevarea::Renderer {
 		layout_info.pSetLayouts = &descriptor_layout;
 
 		VK_ASSERT(vkCreatePipelineLayout(device, &layout_info, nullptr, &pipeline.layout));
+		VK_NAME(device, VK_OBJECT_TYPE_PIPELINE_LAYOUT, pipeline.layout, vert);
 
 		VkPipelineShaderStageCreateInfo shader_stages[2]{};
 		shader_stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -165,6 +169,7 @@ namespace Nevarea::Renderer {
 		pipeline_info.layout = pipeline.layout;
 
 		VK_ASSERT(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline.pipeline));
+		VK_NAME(device, VK_OBJECT_TYPE_PIPELINE, pipeline.pipeline, vert);
 
 		vkDestroyShaderModule(device, vert_shader, nullptr);
 		vkDestroyShaderModule(device, frag_shader, nullptr);
