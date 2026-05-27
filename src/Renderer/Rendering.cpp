@@ -106,7 +106,7 @@ namespace Nevarea {
 			}
 
 			case RenderingAPI::NONE: {
-				return { 0 };
+				return {};
 			}
 		}
 	}
@@ -131,7 +131,7 @@ namespace Nevarea {
 			}
 
 			case RenderingAPI::NONE: {
-				return { 0 };
+				return {};
 			}
 		}
 	}
@@ -160,7 +160,7 @@ namespace Nevarea {
 			}
 
 			case RenderingAPI::NONE: {
-				return { 0 };
+				return {};
 			}
 		}
 	}

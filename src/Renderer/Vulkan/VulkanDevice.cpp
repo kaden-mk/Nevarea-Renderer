@@ -69,8 +69,7 @@ namespace Nevarea::Renderer {
 		return true;
 	}
 
-	static bool check_device_compatibility(VkPhysicalDevice device, VkSurfaceKHR surface)
-	{
+	static bool is_device_compatible(VkPhysicalDevice device, VkSurfaceKHR surface) {
 		VkPhysicalDeviceProperties device_properties;
 		vkGetPhysicalDeviceProperties(device, &device_properties);
 
@@ -89,10 +88,58 @@ namespace Nevarea::Renderer {
 		return queue_family_is_complete
 			&& extensions_supported
 			&& swapchain_adequate
-			&& device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
-			&& features13.dynamicRendering // TODO: make this not hardcoded
+			&& features13.dynamicRendering
 			&& features13.synchronization2
 			&& features12.bufferDeviceAddress;
+	}
+
+	static uint32_t score_device(VkPhysicalDevice device) {
+		VkPhysicalDeviceProperties device_properties;
+		vkGetPhysicalDeviceProperties(device, &device_properties);
+
+		VkPhysicalDeviceMemoryProperties memory_properties;
+		vkGetPhysicalDeviceMemoryProperties(device, &memory_properties);
+		
+		uint32_t score = 0;
+
+		switch (device_properties.deviceType) {
+			case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:   score += 10000; break;
+			case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU: score += 1000;  break;
+			case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:    score += 500;   break;
+			case VK_PHYSICAL_DEVICE_TYPE_CPU:            score += 10;    break;
+			default: break;
+		}
+
+		VkDeviceSize vram = 0;
+
+		for (uint32_t i = 0; i < memory_properties.memoryHeapCount; ++i) {
+			if (memory_properties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+				vram += memory_properties.memoryHeaps[i].size;
+		}
+
+		score += device_properties.limits.maxImageDimension2D;
+		score += static_cast<uint32_t>(vram / (1024 * 1024));
+
+		return score;
+	}
+
+	static VkPhysicalDevice pick_best_compatible_device(std::vector<VkPhysicalDevice> physical_devices, VkSurfaceKHR surface)
+	{
+		VkPhysicalDevice best_device = VK_NULL_HANDLE;
+		uint32_t best_score = 0;
+
+		for (VkPhysicalDevice device : physical_devices) {
+			if (!is_device_compatible(device, surface)) continue;
+
+			uint32_t score = score_device(device);
+			if (score > best_score) {
+				best_score = score;
+				best_device = device;
+			}
+		}
+
+		NEVAREA_ASSERT(best_device != VK_NULL_HANDLE, "VULKAN DEVICE", "No device was found to be compatible!");
+		return best_device;
 	}
 
 	void vulkan_device_init(DeviceContext& device_context, VkInstance instance, VkSurfaceKHR surface)
@@ -114,16 +161,7 @@ namespace Nevarea::Renderer {
 		std::vector<VkPhysicalDevice> physical_devices(physical_device_count);
 		vkEnumeratePhysicalDevices(instance, &physical_device_count, physical_devices.data());
 
-		// TODO: check if the device has the highest amount of memory(?)
-		for (const VkPhysicalDevice device : physical_devices) {
-			if (check_device_compatibility(device, surface)) {
-				device_context->physical_device = device;
-				break;
-			}
-		}
-
-		NEVAREA_ASSERT(device_context->physical_device != VK_NULL_HANDLE,
-			"VULKAN DEVICE", "Could not find a compatible physical device!");
+		device_context->physical_device = pick_best_compatible_device(physical_devices, surface);
 
 		VkPhysicalDeviceProperties device_properties;
 		VkPhysicalDeviceFeatures device_features;
