@@ -8,6 +8,10 @@
 #include <lib/Rendering.hpp>
 
 namespace Nevarea::Renderer {
+	struct DeletionQueue {
+		std::vector<std::function<void()>> deletors;
+	};
+
 	struct SwapchainContext {
         VkSwapchainKHR swapchain;
         VkFormat image_format;

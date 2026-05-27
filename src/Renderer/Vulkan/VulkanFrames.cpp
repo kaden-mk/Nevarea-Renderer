@@ -9,7 +9,7 @@ namespace Nevarea::Renderer {
 		VkResult result = vkAcquireNextImageKHR(device.device, swapchain.swapchain, UINT64_MAX,
 			frame.image_available[frame.current_frame], VK_NULL_HANDLE, &swapchain.current_image_index);
 
-		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 			recreate_swapchain(swapchain, device, surface, window);
 			return VK_NULL_HANDLE;
 		}

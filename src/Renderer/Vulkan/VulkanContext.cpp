@@ -106,7 +106,6 @@ namespace Nevarea::Renderer {
 		VkCommandBuffer cmd = begin_frame(context.frame_sync, context.swapchain, context.device, context.surface, context.window);
 		if (cmd == VK_NULL_HANDLE) return;
 
-		// TODO: barriers
 		for (const ComputeDispatch& dispatch : context.compute_dispatches) {
 			const PipelineContext& pipeline = context.pipelines[dispatch.pipeline.id];
 			vkCmdBindPipeline(cmd, pipeline.bind_point, pipeline.pipeline);
@@ -114,6 +113,23 @@ namespace Nevarea::Renderer {
 			vkCmdPushConstants(cmd, pipeline.layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(PushConstants), &dispatch.push);
 			vkCmdDispatch(cmd, dispatch.groups_x, dispatch.groups_y, dispatch.groups_z);
 		}
+
+		if (!context.compute_dispatches.empty()) {
+			VkMemoryBarrier2 barrier{};
+			barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+			barrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+			barrier.srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+			barrier.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+			barrier.dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_SAMPLED_READ_BIT;
+
+			VkDependencyInfo dependency{};
+			dependency.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+			dependency.memoryBarrierCount = 1;
+			dependency.pMemoryBarriers = &barrier;
+
+			vkCmdPipelineBarrier2(cmd, &dependency);
+		}
+
 		context.compute_dispatches.clear();
 
 		begin_rendering(cmd, context.swapchain);
@@ -164,6 +180,9 @@ namespace Nevarea::Renderer {
 	{
 		vkDeviceWaitIdle(context.device.device);
 
+		for (PipelineContext& pipeline : context.pipelines)
+			vulkan_pipeline_destroy(pipeline, context.device.device, context.frame_sync);
+
 		for (auto& queue : context.frame_sync.deletion_queues) vulkan_resources_flush_deletors(queue);
 
 		vulkan_frame_sync_destroy(context.frame_sync, context.device.device);
@@ -171,9 +190,6 @@ namespace Nevarea::Renderer {
 
 		vulkan_resources_destroy(context.resource_manager);
 		vmaDestroyAllocator(context.allocator);
-
-		for (PipelineContext& pipeline : context.pipelines)
-			vulkan_pipeline_destroy(pipeline, context.device.device, context.frame_sync);
 
 		vulkan_device_destroy(&context.device);
 

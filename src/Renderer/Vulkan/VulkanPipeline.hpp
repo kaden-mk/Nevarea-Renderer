@@ -1,5 +1,7 @@
 #pragma once
 
+#include "VulkanSwapchain.hpp"
+
 namespace Nevarea::Renderer {
     struct PushConstants {
         uint64_t vertex_buffer_address;

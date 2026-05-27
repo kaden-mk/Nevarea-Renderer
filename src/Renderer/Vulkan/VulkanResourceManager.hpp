@@ -27,10 +27,6 @@ namespace Nevarea::Renderer {
 		uint32_t vertex_count;
 	};
 
-	struct DeletionQueue {
-		std::vector<std::function<void()>> deletors;
-	};
-
 	struct ResourceManager {
 		std::vector<VkBuffer> buffer_pool;
 		std::vector<VmaAllocation> allocation_pool;
