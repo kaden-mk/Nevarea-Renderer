@@ -2,6 +2,7 @@
 
 #include "Core/n_pch.hpp"
 #include "Core/InternalState.hpp"
+#include "lib/Rendering.hpp"
 
 namespace Nevarea::Renderer {
 	struct DeviceContext {
@@ -14,6 +15,9 @@ namespace Nevarea::Renderer {
 
 		uint32_t graphics_family_index;
 		uint32_t compute_family_index;
+
+		RendererCapabilities capabilities;
+		std::vector<const char*> enabled_optional_extensions;
 	};
 
 	struct QueueFamilyIndices {

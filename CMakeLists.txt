@@ -20,7 +20,7 @@ add_library(NevareaRenderer STATIC
 )
 
 target_compile_definitions(NevareaRenderer PUBLIC
-    NEVAREA_DEBUG
+    $<$<CONFIG:Debug,RelWithDebInfo>:NEVAREA_DEBUG>
 )
 
 target_include_directories(NevareaRenderer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)

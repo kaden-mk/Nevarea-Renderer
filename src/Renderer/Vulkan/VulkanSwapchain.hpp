@@ -26,7 +26,10 @@ namespace Nevarea::Renderer {
     struct FrameContext {
         std::vector<VkSemaphore> image_available;
         std::vector<VkSemaphore> render_finished;
-        std::vector<VkFence> in_flight;
+
+        VkSemaphore timeline;
+        uint64_t timeline_value;
+        uint64_t frame_timeline_target[MAX_FRAMES_IN_FLIGHT];
 
         uint32_t current_frame;
 
@@ -53,6 +56,8 @@ namespace Nevarea::Renderer {
     void recreate_swapchain(SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window);
     void vulkan_swapchain_destroy(SwapchainContext& swapchain, VkDevice device);
 
-    void vulkan_frame_sync_init(FrameContext& frame_sync, DeviceContext& device_context);
+    void vulkan_frame_sync_init(FrameContext& frame_sync, DeviceContext& device_context, uint32_t swapchain_image_count);
     void vulkan_frame_sync_destroy(FrameContext& frame_sync, VkDevice device);
+
+    void vulkan_frame_sync_ensure_present_semaphores(FrameContext& frame_sync, VkDevice device, uint32_t swapchain_image_count);
 }

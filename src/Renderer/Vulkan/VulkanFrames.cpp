@@ -4,17 +4,14 @@
 
 namespace Nevarea::Renderer {
 	static NEVAREA_FORCE_INLINE VkCommandBuffer prepare_command_buffer(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window) {
-		VK_ASSERT(vkWaitForFences(device.device, 1, &frame.in_flight[frame.current_frame], VK_TRUE, UINT64_MAX));
-
 		VkResult result = vkAcquireNextImageKHR(device.device, swapchain.swapchain, UINT64_MAX,
 			frame.image_available[frame.current_frame], VK_NULL_HANDLE, &swapchain.current_image_index);
 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 			recreate_swapchain(swapchain, device, surface, window);
+			vulkan_frame_sync_ensure_present_semaphores(frame, device.device, static_cast<uint32_t>(swapchain.images.size()));
 			return VK_NULL_HANDLE;
 		}
-
-		vkResetFences(device.device, 1, &frame.in_flight[frame.current_frame]);
 
 		VkCommandBuffer cmd = frame.command_buffers[frame.current_frame];
 		NEVAREA_ASSERT(cmd != VK_NULL_HANDLE, "VULKAN FRAMES", "The Drawing Command Buffer is Null!");
@@ -25,8 +22,16 @@ namespace Nevarea::Renderer {
 	}
 
 	VkCommandBuffer begin_frame(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window) {
-		VK_ASSERT(vkWaitForFences(device.device, 1, &frame.in_flight[frame.current_frame], VK_TRUE, UINT64_MAX));
-		
+		uint64_t wait_value = frame.frame_timeline_target[frame.current_frame];
+
+		VkSemaphoreWaitInfo wait_info{};
+		wait_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
+		wait_info.semaphoreCount = 1;
+		wait_info.pSemaphores = &frame.timeline;
+		wait_info.pValues = &wait_value;
+
+		VK_ASSERT(vkWaitSemaphores(device.device, &wait_info, UINT64_MAX));
+
 		vulkan_resources_flush_deletors(frame.deletion_queues[frame.current_frame]);
 
 		VkCommandBuffer cmd = prepare_command_buffer(frame, swapchain, device, surface, window);
@@ -82,17 +87,25 @@ namespace Nevarea::Renderer {
 	}
 
 	static NEVAREA_FORCE_INLINE void handle_queues(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkCommandBuffer cmd) {
-		VkSemaphore signal_semaphores[] = { frame.render_finished[frame.current_frame] };
+		uint32_t img_idx = swapchain.current_image_index;
+		VkSemaphore signal_semaphores[] = { frame.render_finished[img_idx] };
 
 		VkSemaphoreSubmitInfo wait_info{};
 		wait_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
 		wait_info.semaphore = frame.image_available[frame.current_frame];
 		wait_info.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 
-		VkSemaphoreSubmitInfo signal_info{};
-		signal_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-		signal_info.semaphore = frame.render_finished[frame.current_frame];
-		signal_info.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+		uint64_t signal_value = ++frame.timeline_value;
+
+		VkSemaphoreSubmitInfo signal_infos[2]{};
+		signal_infos[0].sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+		signal_infos[0].semaphore = frame.render_finished[img_idx];
+		signal_infos[0].stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+		signal_infos[1].sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+		signal_infos[1].semaphore = frame.timeline;
+		signal_infos[1].value = signal_value;
+		signal_infos[1].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 
 		VkCommandBufferSubmitInfo cmd_info{};
 		cmd_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
@@ -102,12 +115,14 @@ namespace Nevarea::Renderer {
 		submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
 		submit_info.waitSemaphoreInfoCount = 1;
 		submit_info.pWaitSemaphoreInfos = &wait_info;
-		submit_info.signalSemaphoreInfoCount = 1;
-		submit_info.pSignalSemaphoreInfos = &signal_info;
+		submit_info.signalSemaphoreInfoCount = 2;
+		submit_info.pSignalSemaphoreInfos = signal_infos;
 		submit_info.commandBufferInfoCount = 1;
 		submit_info.pCommandBufferInfos = &cmd_info;
 
-		VK_ASSERT(vkQueueSubmit2(device.graphics_queue, 1, &submit_info, frame.in_flight[frame.current_frame]));
+		VK_ASSERT(vkQueueSubmit2(device.graphics_queue, 1, &submit_info, VK_NULL_HANDLE));
+
+		frame.frame_timeline_target[frame.current_frame] = signal_value;
 
 		VkSwapchainKHR swapchains[] = { swapchain.swapchain };
 
@@ -120,8 +135,10 @@ namespace Nevarea::Renderer {
 		present_info.pImageIndices = &swapchain.current_image_index;
 
 		VkResult result = vkQueuePresentKHR(device.present_queue, &present_info);
-		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 			recreate_swapchain(swapchain, device, surface, window);
+			vulkan_frame_sync_ensure_present_semaphores(frame, device.device, static_cast<uint32_t>(swapchain.images.size()));
+		}
 	}
 
 	void end_frame_rendering(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkCommandBuffer cmd)

@@ -88,6 +88,20 @@ namespace Nevarea {
 		}
 	}
 
+	const RendererCapabilities& renderer_get_capabilities(RenderContext context) {
+		static const RendererCapabilities empty{};
+		RenderState* render_state = resolve(context);
+
+		switch (render_state->api) {
+			case RenderingAPI::VULKAN:
+				return render_state->vulkan.device.capabilities;
+
+			case RenderingAPI::NONE:
+				return empty;
+		}
+		return empty;
+	}
+
 	PipelineHandle renderer_create_compute_pipeline(RenderContext context, const char* compute) {
 		RenderState* render_state = resolve(context);
 

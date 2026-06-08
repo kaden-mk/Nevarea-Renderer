@@ -21,7 +21,6 @@ namespace Nevarea::Renderer {
 		app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
 		app_info.apiVersion = NEVAREA_VULKAN_VERSION;
 
-		// extension properties (TODO: validate extensions that can be used)
 		uint32_t extension_count = 0;
 		vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
 
@@ -42,9 +41,25 @@ namespace Nevarea::Renderer {
 		instance_create_info.ppEnabledExtensionNames = instance_extensions.data();
 
 		#ifdef NEVAREA_DEBUG
-		instance_create_info.enabledLayerCount = static_cast<uint32_t>(validation_layers.size());
-		instance_create_info.ppEnabledLayerNames = validation_layers.data();
-		instance_create_info.pNext = &debug_create_info;
+			uint32_t available_count = 0;
+			vkEnumerateInstanceLayerProperties(&available_count, nullptr);
+			std::vector<VkLayerProperties> available_layers(available_count);
+			vkEnumerateInstanceLayerProperties(&available_count, available_layers.data());
+
+			std::vector<const char*> enabled_layers;
+			for (const char* requested : validation_layers) {
+				bool found = false;
+				for (const auto& layer : available_layers)
+					if (strcmp(layer.layerName, requested) == 0) { found = true; break; }
+
+				if (found) enabled_layers.push_back(requested);
+				else std::cerr << "[NEVAREA]: validation layer '" << requested << "' not available, skipping\n";
+			}
+
+			instance_create_info.enabledLayerCount = static_cast<uint32_t>(enabled_layers.size());
+			instance_create_info.ppEnabledLayerNames = enabled_layers.data();
+			if (!enabled_layers.empty())
+				instance_create_info.pNext = &debug_create_info;
 		#endif
 
 		VK_ASSERT(vkCreateInstance(&instance_create_info, nullptr, &instance));
@@ -99,7 +114,7 @@ namespace Nevarea::Renderer {
 		vulkan_context_create_allocator(context.instance, context.device.physical_device, context.device.device, context.allocator);
 		vulkan_resources_init(context.resource_manager, context.allocator, context.device.device);
 		vulkan_swapchain_init(context.swapchain, context.device, context.surface, context.window);
-		vulkan_frame_sync_init(context.frame_sync, context.device);
+		vulkan_frame_sync_init(context.frame_sync, context.device, static_cast<uint32_t>(context.swapchain.images.size()));
 	}
 
 	void vulkan_context_draw(VulkanContext& context) {

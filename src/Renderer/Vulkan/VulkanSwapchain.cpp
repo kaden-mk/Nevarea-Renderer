@@ -167,36 +167,50 @@ namespace Nevarea::Renderer {
 		vkDestroySwapchainKHR(device, swapchain.swapchain, nullptr);
 	}
 
-	void vulkan_frame_sync_init(FrameContext& frame_sync, DeviceContext& device_context)
+	void vulkan_frame_sync_init(FrameContext& frame_sync, DeviceContext& device_context, uint32_t swapchain_image_count)
 	{
 		VkDevice device = device_context.device;
 
 		frame_sync.current_frame = 0;
 
+		// image_available: per frame-in-flight slot
 		frame_sync.image_available.resize(MAX_FRAMES_IN_FLIGHT);
-		frame_sync.render_finished.resize(MAX_FRAMES_IN_FLIGHT);
-		frame_sync.in_flight.resize(MAX_FRAMES_IN_FLIGHT);
 
 		VkSemaphoreCreateInfo semaphore_info{};
 		semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-		VkFenceCreateInfo fence_info{};
-		fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-		fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
 		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 			VK_ASSERT(vkCreateSemaphore(device, &semaphore_info, nullptr, &frame_sync.image_available[i]));
-			VK_ASSERT(vkCreateSemaphore(device, &semaphore_info, nullptr, &frame_sync.render_finished[i]));
-			VK_ASSERT(vkCreateFence(device, &fence_info, nullptr, &frame_sync.in_flight[i]));
 
 			char name[64];
 			std::snprintf(name, sizeof(name), "image_available[%zu]", i);
 			VK_NAME(device, VK_OBJECT_TYPE_SEMAPHORE, frame_sync.image_available[i], name);
+		}
+
+		frame_sync.render_finished.resize(swapchain_image_count);
+		for (size_t i = 0; i < swapchain_image_count; i++) {
+			VK_ASSERT(vkCreateSemaphore(device, &semaphore_info, nullptr, &frame_sync.render_finished[i]));
+
+			char name[64];
 			std::snprintf(name, sizeof(name), "render_finished[%zu]", i);
 			VK_NAME(device, VK_OBJECT_TYPE_SEMAPHORE, frame_sync.render_finished[i], name);
-			std::snprintf(name, sizeof(name), "in_flight[%zu]", i);
-			VK_NAME(device, VK_OBJECT_TYPE_FENCE, frame_sync.in_flight[i], name);
 		}
+
+		VkSemaphoreTypeCreateInfo timeline_type{};
+		timeline_type.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
+		timeline_type.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+		timeline_type.initialValue = 0;
+
+		VkSemaphoreCreateInfo timeline_info{};
+		timeline_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+		timeline_info.pNext = &timeline_type;
+
+		VK_ASSERT(vkCreateSemaphore(device, &timeline_info, nullptr, &frame_sync.timeline));
+		VK_NAME(device, VK_OBJECT_TYPE_SEMAPHORE, frame_sync.timeline, "frame_timeline");
+
+		frame_sync.timeline_value = 0;
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+			frame_sync.frame_timeline_target[i] = 0;
 
 		//QueueFamilyIndices indices = find_queue_families(physical_device, surface);
 
@@ -229,15 +243,34 @@ namespace Nevarea::Renderer {
 
 	void vulkan_frame_sync_destroy(FrameContext& frame_sync, VkDevice device)
 	{
-		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		for (size_t i = 0; i < frame_sync.image_available.size(); i++)
 			vkDestroySemaphore(device, frame_sync.image_available[i], nullptr);
+
+		for (size_t i = 0; i < frame_sync.render_finished.size(); i++)
 			vkDestroySemaphore(device, frame_sync.render_finished[i], nullptr);
-			vkDestroyFence(device, frame_sync.in_flight[i], nullptr);
-		}
+
+		vkDestroySemaphore(device, frame_sync.timeline, nullptr);
 
 		if (frame_sync.command_pool != VK_NULL_HANDLE) {
 			vkDestroyCommandPool(device, frame_sync.command_pool, nullptr);
 			frame_sync.command_pool = VK_NULL_HANDLE;
+		}
+	}
+
+	void vulkan_frame_sync_ensure_present_semaphores(FrameContext& frame_sync, VkDevice device, uint32_t swapchain_image_count) {
+		size_t old_count = frame_sync.render_finished.size();
+		if (swapchain_image_count <= old_count) return;
+
+		VkSemaphoreCreateInfo semaphore_info{};
+		semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+		frame_sync.render_finished.resize(swapchain_image_count);
+		for (size_t i = old_count; i < swapchain_image_count; i++) {
+			VK_ASSERT(vkCreateSemaphore(device, &semaphore_info, nullptr, &frame_sync.render_finished[i]));
+
+			char name[64];
+			std::snprintf(name, sizeof(name), "render_finished[%zu]", i);
+			VK_NAME(device, VK_OBJECT_TYPE_SEMAPHORE, frame_sync.render_finished[i], name);
 		}
 	}
 }

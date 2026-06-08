@@ -30,11 +30,42 @@ namespace Nevarea {
 		bool is_valid() const { return id != UINT32_MAX; }
 	};
 
+	struct RendererCapabilities {
+		bool memory_priority = false;
+		bool pageable_memory = false;
+
+		bool present_id = false;
+		bool present_wait = false;
+		bool swapchain_maintenance1 = false;
+
+		bool descriptor_buffer = false;
+		bool descriptor_heap = false;
+		bool mutable_descriptor_type = false;
+		bool shader_object = false;
+		bool extended_dynamic_state3 = false;
+
+		bool calibrated_timestamps = false;
+		bool shader_module_identifier = false;
+
+		bool ray_query = false;
+		bool ray_tracing_pipeline = false;
+		bool acceleration_structure = false;
+		bool ray_tracing_position_fetch = false;
+		bool opacity_micromap = false;
+
+		bool mesh_shader = false;
+		bool variable_rate_shading = false;
+		bool cooperative_matrix = false;
+		bool device_generated_commands = false;
+	};
+
 	RenderContext renderer_create(RenderingAPI api);
 	void renderer_destroy(RenderContext renderer);
 
 	void renderer_hook_window(RenderContext renderer, WindowHandle window);
 	void renderer_draw(RenderContext renderer);
+
+	const RendererCapabilities& renderer_get_capabilities(RenderContext renderer);
 
 	PipelineHandle renderer_create_pipeline(RenderContext renderer, const char* vert, const char* frag);
 	PipelineHandle renderer_create_compute_pipeline(RenderContext renderer, const char* compute);
