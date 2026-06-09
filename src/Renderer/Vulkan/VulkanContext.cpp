@@ -121,6 +121,17 @@ namespace Nevarea::Renderer {
 		VkCommandBuffer cmd = begin_frame(context.frame_sync, context.swapchain, context.device, context.surface, context.window);
 		if (cmd == VK_NULL_HANDLE) return;
 
+		bool present = context.present_target.index != UINT32_MAX;
+		bool had_compute = !context.compute_dispatches.empty();
+
+		if (present) {
+			AllocatedImage& target = vulkan_get_image(context.resource_manager, context.present_target);
+			transition_image(cmd, target.image,
+				VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
+				VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0,
+				VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT);
+		}
+
 		for (const ComputeDispatch& dispatch : context.compute_dispatches) {
 			const PipelineContext& pipeline = context.pipelines[dispatch.pipeline.id];
 			vkCmdBindPipeline(cmd, pipeline.bind_point, pipeline.pipeline);
@@ -128,8 +139,36 @@ namespace Nevarea::Renderer {
 			vkCmdPushConstants(cmd, pipeline.layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(PushConstants), &dispatch.push);
 			vkCmdDispatch(cmd, dispatch.groups_x, dispatch.groups_y, dispatch.groups_z);
 		}
+		context.compute_dispatches.clear();
 
-		if (!context.compute_dispatches.empty()) {
+		if (present) {
+			AllocatedImage& target = vulkan_get_image(context.resource_manager, context.present_target);
+			VkImage sc = context.swapchain.images[context.swapchain.current_image_index];
+
+			transition_image(cmd, target.image,
+				VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+				VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+				VK_PIPELINE_STAGE_2_BLIT_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
+
+			transition_image(cmd, sc,
+				VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0,
+				VK_PIPELINE_STAGE_2_BLIT_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
+
+			blit_image(cmd, target.image, sc, target.extent, context.swapchain.extent);
+
+			transition_image(cmd, sc,
+				VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+				VK_PIPELINE_STAGE_2_BLIT_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+				VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, 0);
+
+			context.present_target = { UINT32_MAX, 0 };
+			context.draw_list.clear();
+			end_frame_present(context.frame_sync, context.swapchain, context.device, context.surface, context.window, cmd);
+			return;
+		}
+
+		if (had_compute) {
 			VkMemoryBarrier2 barrier{};
 			barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
 			barrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
@@ -144,8 +183,6 @@ namespace Nevarea::Renderer {
 
 			vkCmdPipelineBarrier2(cmd, &dependency);
 		}
-
-		context.compute_dispatches.clear();
 
 		begin_rendering(cmd, context.swapchain);
 

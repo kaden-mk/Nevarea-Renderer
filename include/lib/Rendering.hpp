@@ -15,6 +15,34 @@ namespace Nevarea {
 	enum class RenderContext : uint32_t { INVALID = 0 };
 	enum class SwapchainHandle : uint32_t { INVALID = 0 };
 
+	enum class Format : uint32_t {
+		RGBA8_UNORM,
+		RGBA16_SFLOAT,
+	};
+
+	namespace ImageUsage {
+		enum : uint32_t {
+			STORAGE = 1u << 0,
+			SAMPLED = 1u << 1,
+			TRANSFER_SRC = 1u << 2,
+			TRANSFER_DST = 1u << 3,
+			COLOR_TARGET = 1u << 4,
+		};
+	}
+
+	struct ImageDescription {
+		uint32_t width = 0;
+		uint32_t height = 0;
+		Format format = Format::RGBA16_SFLOAT;
+		uint32_t usage = 0;
+	};
+
+	struct Image {
+		uint32_t id = UINT32_MAX;
+		uint32_t generation = 0;
+		bool is_valid() const { return id != UINT32_MAX; }
+	};
+
 	struct Vertex {
 		float pos[2];
 	};
@@ -71,9 +99,13 @@ namespace Nevarea {
 	PipelineHandle renderer_create_compute_pipeline(RenderContext renderer, const char* compute);
 	void renderer_destroy_pipeline(RenderContext renderer, PipelineHandle pipeline);
 
+	Image renderer_create_image(RenderContext renderer, const ImageDescription& description);
+	void renderer_destroy_image(RenderContext renderer, Image handle);
+
 	Mesh renderer_create_mesh(RenderContext renderer, Vertex* vertices, uint32_t count);
 	void renderer_destroy_mesh(RenderContext renderer, Mesh handle);
 
 	void renderer_submit_mesh(RenderContext renderer, Mesh mesh, PipelineHandle pipeline);
-	void renderer_dispatch_compute(RenderContext renderer, PipelineHandle pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, uint64_t buffer_address = 0);
+	void renderer_dispatch_compute(RenderContext renderer, PipelineHandle pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, uint64_t buffer_address = 0, Image target_image = {});
+	void renderer_present_image(RenderContext renderer, Image handle);
 }

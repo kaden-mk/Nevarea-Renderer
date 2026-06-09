@@ -16,6 +16,24 @@ namespace Nevarea {
 
 			return render_state;
 		}
+
+		static VkFormat to_vk_format(Format format) {
+			switch (format) {
+				case Format::RGBA8_UNORM: return VK_FORMAT_R8G8B8A8_UNORM;
+				case Format::RGBA16_SFLOAT: return VK_FORMAT_R16G16B16A16_SFLOAT;
+			}
+			return VK_FORMAT_UNDEFINED;
+		}
+
+		static VkImageUsageFlags to_vk_image_usage(uint32_t usage) {
+			VkImageUsageFlags flags = 0;
+			if (usage & ImageUsage::STORAGE) flags |= VK_IMAGE_USAGE_STORAGE_BIT;
+			if (usage & ImageUsage::SAMPLED) flags |= VK_IMAGE_USAGE_SAMPLED_BIT;
+			if (usage & ImageUsage::TRANSFER_SRC) flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+			if (usage & ImageUsage::TRANSFER_DST) flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+			if (usage & ImageUsage::COLOR_TARGET) flags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+			return flags;
+		}
 	}
 
 	RenderContext renderer_create(RenderingAPI api)
@@ -26,7 +44,7 @@ namespace Nevarea {
 			RenderState& render_state = g_renderers[i];
 			render_state.is_active = true;
 			render_state.api = api;
-			
+
 			switch (api) {
 				case RenderingAPI::VULKAN:
 					new (&render_state.vulkan) Renderer::VulkanContext {};
@@ -127,7 +145,7 @@ namespace Nevarea {
 
 	PipelineHandle renderer_create_pipeline(RenderContext context, const char* vert, const char* frag) {
 		RenderState* render_state = resolve(context);
-		
+
 		switch (render_state->api) {
 			case RenderingAPI::VULKAN: {
 				Renderer::PipelineContext pipeline;
@@ -152,7 +170,7 @@ namespace Nevarea {
 
 	void renderer_destroy_pipeline(RenderContext context, PipelineHandle pipeline) {
 		RenderState* render_state = resolve(context);
-		
+
 		switch (render_state->api) {
 			case RenderingAPI::VULKAN: {
 				auto& vulkan_renderer = render_state->vulkan;
@@ -165,9 +183,39 @@ namespace Nevarea {
 		}
 	}
 
+	Image renderer_create_image(RenderContext context, const ImageDescription& description) {
+		RenderState* render_state = resolve(context);
+
+		switch (render_state->api) {
+			case RenderingAPI::VULKAN: {
+				VkExtent2D extent = { description.width, description.height };
+				Renderer::ImageHandle handle = Renderer::vulkan_create_image(render_state->vulkan.resource_manager, extent, to_vk_format(description.format), to_vk_image_usage(description.usage));
+
+				return { handle.index, handle.generation };
+			}
+
+			case RenderingAPI::NONE:
+				break;
+		}
+
+		return {};
+	}
+
+	void renderer_destroy_image(RenderContext context, Image handle) {
+		RenderState* render_state = resolve(context);
+
+		switch (render_state->api) {
+			case RenderingAPI::VULKAN:
+				Renderer::vulkan_destroy_image(render_state->vulkan.resource_manager, { handle.id, handle.generation }, render_state->vulkan.frame_sync);
+				break;
+			case RenderingAPI::NONE:
+				break;
+		}
+	}
+
 	Mesh renderer_create_mesh(RenderContext context, Vertex* vertices, uint32_t count) {
 		RenderState* render_state = resolve(context);
-		
+
 		switch (render_state->api) {
 			case RenderingAPI::VULKAN: {
 				return Renderer::vulkan_create_mesh(render_state->vulkan.resource_manager, vertices, count);
@@ -205,14 +253,26 @@ namespace Nevarea {
 		}
 	}
 
-	void renderer_dispatch_compute(RenderContext context, PipelineHandle pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, uint64_t buffer_address) {
+	void renderer_dispatch_compute(RenderContext context, PipelineHandle pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, uint64_t buffer_address, Image target_image) {
+		RenderState* render_state = resolve(context);
+
+		switch (render_state->api) {
+		case RenderingAPI::VULKAN:
+			render_state->vulkan.compute_dispatches.push_back({ pipeline, groups_x, groups_y, groups_z, { buffer_address, target_image.id } });
+			break;
+
+		case RenderingAPI::NONE:
+			break;
+		}
+	}
+
+	void renderer_present_image(RenderContext context, Image handle) {
 		RenderState* render_state = resolve(context);
 
 		switch (render_state->api) {
 			case RenderingAPI::VULKAN:
-				render_state->vulkan.compute_dispatches.push_back({ pipeline, groups_x, groups_y, groups_z, { buffer_address } });
+				render_state->vulkan.present_target = { handle.id, handle.generation };
 				break;
-
 			case RenderingAPI::NONE:
 				break;
 		}

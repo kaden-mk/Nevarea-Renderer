@@ -8,14 +8,15 @@ namespace Nevarea::Renderer {
 	void vulkan_create_descriptor_pool(ResourceManager& manager) {
 		VkDescriptorPoolSize pool_sizes[] = {
 			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, NEVAREA_BUFFER_IMAGE_SIZE },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, NEVAREA_BUFFER_STORAGE_SIZE }
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, NEVAREA_BUFFER_STORAGE_SIZE },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, NEVAREA_BUFFER_IMAGE_SIZE }
 		};
 
 		VkDescriptorPoolCreateInfo create_info{};
 		create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		create_info.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
 		create_info.maxSets = 1;
-		create_info.poolSizeCount = 2;
+		create_info.poolSizeCount = 3;
 		create_info.pPoolSizes = pool_sizes;
 
 		VK_ASSERT(vkCreateDescriptorPool(manager.device, &create_info, nullptr, &manager.descriptor_pool));
@@ -23,25 +24,33 @@ namespace Nevarea::Renderer {
 	}
 
 	void vulkan_create_descriptor_layout(ResourceManager& manager) {
-		VkDescriptorSetLayoutBinding binding{};
-		binding.binding = 0;
-		binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		binding.descriptorCount = NEVAREA_BUFFER_IMAGE_SIZE;
-		binding.stageFlags = VK_SHADER_STAGE_ALL;
+		VkDescriptorSetLayoutBinding bindings[2]{};
+		bindings[0].binding = 0;
+		bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		bindings[0].descriptorCount = NEVAREA_BUFFER_IMAGE_SIZE;
+		bindings[0].stageFlags = VK_SHADER_STAGE_ALL;
 
-		VkDescriptorBindingFlags flags = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+		bindings[1].binding = 1;
+		bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+		bindings[1].descriptorCount = NEVAREA_BUFFER_IMAGE_SIZE;
+		bindings[1].stageFlags = VK_SHADER_STAGE_ALL;
+
+		VkDescriptorBindingFlags flags[2] = {
+			VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
+			VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT
+		};
 
 		VkDescriptorSetLayoutBindingFlagsCreateInfo layout_flags{};
 		layout_flags.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
-		layout_flags.bindingCount = 1;
-		layout_flags.pBindingFlags = &flags;
+		layout_flags.bindingCount = 2;
+		layout_flags.pBindingFlags = flags;
 
 		VkDescriptorSetLayoutCreateInfo layout_info{};
 		layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 		layout_info.pNext = &layout_flags;
 		layout_info.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
-		layout_info.bindingCount = 1;
-		layout_info.pBindings = &binding;
+		layout_info.bindingCount = 2;
+		layout_info.pBindings = bindings;
 
 		VK_ASSERT(vkCreateDescriptorSetLayout(manager.device, &layout_info, nullptr, &manager.descriptor_layout));
 		VK_NAME(manager.device, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, manager.descriptor_layout, "descriptor_set_layout");
@@ -93,6 +102,17 @@ namespace Nevarea::Renderer {
 		manager.allocation_pool.clear();
 		manager.generation_pool.clear();
 		manager.free_list.clear();
+
+		for (auto& img : manager.image_pool) {
+			if (img.image != VK_NULL_HANDLE) {
+				vkDestroyImageView(manager.device, img.view, nullptr);
+				vmaDestroyImage(manager.allocator, img.image, img.allocation);
+			}
+		}
+
+		manager.image_pool.clear();
+		manager.image_generation_pool.clear();
+		manager.image_free_list.clear();
 	
 		vkDestroyDescriptorSetLayout(manager.device, manager.descriptor_layout, nullptr);
 		vkDestroyDescriptorPool(manager.device, manager.descriptor_pool, nullptr);
@@ -177,6 +197,101 @@ namespace Nevarea::Renderer {
 		manager.allocation_pool[handle.index] = VK_NULL_HANDLE;
 		manager.generation_pool[handle.index]++;
 		manager.free_list.push_back(handle.index);
+	}
+
+	ImageHandle vulkan_create_image(ResourceManager& manager, VkExtent2D extent, VkFormat format, VkImageUsageFlags usage)
+	{
+		AllocatedImage img{};
+		img.extent = extent;
+		img.format = format;
+
+		VkImageCreateInfo image_info{};
+		image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		image_info.imageType = VK_IMAGE_TYPE_2D;
+		image_info.format = format;
+		image_info.extent = { extent.width, extent.height, 1 };
+		image_info.mipLevels = 1;
+		image_info.arrayLayers = 1;
+		image_info.samples = VK_SAMPLE_COUNT_1_BIT;
+		image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+		image_info.usage = usage;
+
+		VmaAllocationCreateInfo alloc_info{};
+		alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+		alloc_info.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+		VK_ASSERT(vmaCreateImage(manager.allocator, &image_info, &alloc_info, &img.image, &img.allocation, nullptr));
+		VK_NAME(manager.device, VK_OBJECT_TYPE_IMAGE, img.image, "nevarea_image");
+
+		VkImageViewCreateInfo view_info{};
+		view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		view_info.image = img.image;
+		view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		view_info.format = format;
+		view_info.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+		VK_ASSERT(vkCreateImageView(manager.device, &view_info, nullptr, &img.view));
+
+		uint32_t index;
+		if (!manager.image_free_list.empty()) {
+			index = manager.image_free_list.back();
+			manager.image_free_list.pop_back();
+			manager.image_pool[index] = img;
+		}
+		else {
+			index = static_cast<uint32_t>(manager.image_pool.size());
+			manager.image_pool.push_back(img);
+			manager.image_generation_pool.push_back(0);
+		}
+
+		if (usage & VK_IMAGE_USAGE_STORAGE_BIT) {
+			VkDescriptorImageInfo desc_image{};
+			desc_image.imageView = img.view;
+			desc_image.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+			VkWriteDescriptorSet write{};
+			write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			write.dstSet = manager.descriptor_set;
+			write.dstBinding = 1;
+			write.dstArrayElement = index;
+			write.descriptorCount = 1;
+			write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+			write.pImageInfo = &desc_image;
+			vkUpdateDescriptorSets(manager.device, 1, &write, 0, nullptr);
+		}
+
+		return { index, manager.image_generation_pool[index] };
+	}
+
+	AllocatedImage& vulkan_get_image(ResourceManager& manager, ImageHandle handle)
+	{
+		NEVAREA_ASSERT(handle.index < manager.image_pool.size(),
+			"RESOURCE MANAGER", "ImageHandle index out of range!");
+
+		NEVAREA_ASSERT(handle.generation == manager.image_generation_pool[handle.index],
+			"RESOURCE MANAGER", "Stale ImageHandle (generation mismatch)!");
+
+		return manager.image_pool[handle.index];
+	}
+
+	void vulkan_destroy_image(ResourceManager& manager, ImageHandle handle, FrameContext& frame)
+	{
+		AllocatedImage& img = vulkan_get_image(manager, handle);
+
+		VmaAllocator allocator = manager.allocator;
+		VkDevice device = manager.device;
+		VkImage image = img.image;
+		VkImageView view = img.view;
+		VmaAllocation allocation = img.allocation;
+
+		vulkan_resources_push_deletor(frame.deletion_queues[frame.current_frame], [allocator, device, image, view, allocation]() {
+			vkDestroyImageView(device, view, nullptr);
+			vmaDestroyImage(allocator, image, allocation);
+			});
+
+		manager.image_pool[handle.index].image = VK_NULL_HANDLE;
+		manager.image_pool[handle.index].view = VK_NULL_HANDLE;
+		manager.image_generation_pool[handle.index]++;
+		manager.image_free_list.push_back(handle.index);
 	}
 
 	Mesh vulkan_create_mesh(ResourceManager& manager, Vertex* vertices, uint32_t count) {

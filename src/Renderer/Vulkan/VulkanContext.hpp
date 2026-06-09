@@ -34,6 +34,7 @@ namespace Nevarea::Renderer {
 		SurfaceContext surface;
 		SwapchainContext swapchain;
 		FrameContext frame_sync;
+		ImageHandle present_target = { UINT32_MAX, 0 };
 
 		std::vector<PipelineContext> pipelines;
 		std::vector<DrawCall> draw_list;

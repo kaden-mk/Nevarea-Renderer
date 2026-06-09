@@ -46,6 +46,8 @@ namespace Nevarea::Renderer {
 
 			return extent;
 		}
+
+		return { 0, 0 };
 	}
 
 	static VkPresentModeKHR choose_swapchain_present_mode(const std::vector<VkPresentModeKHR>& present_modes) {
@@ -123,7 +125,7 @@ namespace Nevarea::Renderer {
 		create_info.imageColorSpace = surface_format.colorSpace;
 		create_info.imageExtent = swapchain_extent;
 		create_info.imageArrayLayers = 1;
-		create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+		create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 		create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE; // TODO: add a check to switch between concurrent and exclusive
 		create_info.preTransform = surface.capabilities.currentTransform;
 		create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
@@ -139,7 +141,7 @@ namespace Nevarea::Renderer {
 
 		swapchain.image_format = surface_format.format;
 		swapchain.extent = swapchain_extent;
-		
+
 		uint32_t swapchain_image_count = 0;
 		vkGetSwapchainImagesKHR(device.device, swapchain.swapchain, &swapchain_image_count, nullptr);
 		swapchain.images.resize(swapchain_image_count);
@@ -155,7 +157,7 @@ namespace Nevarea::Renderer {
 			vkDestroyImageView(device.device, imageView, nullptr);
 
 		swapchain.image_views.clear();
-		
+
 		VkSwapchainKHR old_handle = swapchain.swapchain;
 		vulkan_swapchain_init(swapchain, device, surface, window, old_handle);
 	}
@@ -163,7 +165,7 @@ namespace Nevarea::Renderer {
 	void vulkan_swapchain_destroy(SwapchainContext& swapchain, VkDevice device) {
 		for (size_t i = 0; i < swapchain.image_views.size(); i++)
 			vkDestroyImageView(device, swapchain.image_views[i], nullptr);
-		
+
 		vkDestroySwapchainKHR(device, swapchain.swapchain, nullptr);
 	}
 

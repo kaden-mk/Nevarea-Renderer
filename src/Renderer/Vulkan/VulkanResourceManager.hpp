@@ -11,6 +11,19 @@ namespace Nevarea::Renderer {
 	#define NEVAREA_BUFFER_IMAGE_SIZE 1000
 	#define NEVAREA_BUFFER_STORAGE_SIZE 1000
 
+	struct ImageHandle {
+		uint32_t index;
+		uint32_t generation;
+	};
+
+	struct AllocatedImage {
+		VkImage image = VK_NULL_HANDLE;
+		VkImageView view = VK_NULL_HANDLE;
+		VmaAllocation allocation = VK_NULL_HANDLE;
+		VkExtent2D extent = {};
+		VkFormat format = VK_FORMAT_UNDEFINED;
+	};
+
 	struct BufferHandle {
 		uint32_t index;
 		uint32_t generation;
@@ -38,6 +51,10 @@ namespace Nevarea::Renderer {
 		std::vector<uint32_t> mesh_generation_pool;
 		std::vector<uint32_t> mesh_free_list;
 
+		std::vector<AllocatedImage> image_pool;
+		std::vector<uint32_t> image_generation_pool;
+		std::vector<uint32_t> image_free_list;
+
 		VmaAllocator allocator;
 
 		VkDescriptorSet descriptor_set;
@@ -57,6 +74,10 @@ namespace Nevarea::Renderer {
 	VkBuffer vulkan_get_buffer(const ResourceManager& manager, BufferHandle handle);
 	uint64_t vulkan_get_buffer_address(const ResourceManager& manager, BufferHandle handle);
 	void vulkan_destroy_buffer(ResourceManager&, BufferHandle handle);
+
+	ImageHandle vulkan_create_image(ResourceManager& manager, VkExtent2D extent, VkFormat format, VkImageUsageFlags usage);
+	AllocatedImage& vulkan_get_image(ResourceManager& manager, ImageHandle handle);
+	void vulkan_destroy_image(ResourceManager& manager, ImageHandle handle, FrameContext& frame);
 
 	Mesh vulkan_create_mesh(ResourceManager& manager, Vertex* vertices, uint32_t count);
 	void vulkan_destroy_mesh(ResourceManager& manager, Mesh handle, FrameContext& frame);

@@ -21,7 +21,7 @@ namespace Nevarea::Renderer {
 		return cmd;
 	}
 
-	VkCommandBuffer begin_frame(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window) {
+	VkCommandBuffer begin_frame(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window) {		
 		uint64_t wait_value = frame.frame_timeline_target[frame.current_frame];
 
 		VkSemaphoreWaitInfo wait_info{};
@@ -41,33 +41,15 @@ namespace Nevarea::Renderer {
 		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		VK_ASSERT(vkBeginCommandBuffer(cmd, &begin_info));
 
-		VkImageMemoryBarrier2 begin_barrier{};
-		begin_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-		begin_barrier.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
-		begin_barrier.srcAccessMask = 0;
-		begin_barrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-		begin_barrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-		begin_barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		begin_barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		begin_barrier.image = swapchain.images[swapchain.current_image_index];
-		begin_barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-
-		VkDependencyInfo dependency_info{};
-		dependency_info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-		dependency_info.dependencyFlags = 0;
-		dependency_info.memoryBarrierCount = 0;
-		dependency_info.pMemoryBarriers = NULL;
-		dependency_info.bufferMemoryBarrierCount = 0;
-		dependency_info.pBufferMemoryBarriers = NULL;
-		dependency_info.imageMemoryBarrierCount = 1;
-		dependency_info.pImageMemoryBarriers = &begin_barrier;
-
-		vkCmdPipelineBarrier2(cmd, &dependency_info);
-
 		return cmd;
 	}
 
 	void begin_rendering(VkCommandBuffer cmd, SwapchainContext& swapchain) {
+		transition_image(cmd, swapchain.images[swapchain.current_image_index],
+			VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			VK_PIPELINE_STAGE_2_NONE, 0,
+			VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
+
 		VkRenderingAttachmentInfo color_attachment{};
 		color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 		color_attachment.imageView = swapchain.image_views[swapchain.current_image_index];
@@ -172,6 +154,59 @@ namespace Nevarea::Renderer {
 
 		handle_queues(frame, swapchain, device, surface, window, cmd);
 
+		frame.current_frame = (frame.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
+	}
+
+	void transition_image(VkCommandBuffer cmd, VkImage image,
+		VkImageLayout old_layout, VkImageLayout new_layout,
+		VkPipelineStageFlags2 src_stage, VkAccessFlags2 src_access,
+		VkPipelineStageFlags2 dst_stage, VkAccessFlags2 dst_access)
+	{
+		VkImageMemoryBarrier2 barrier{};
+		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+		barrier.srcStageMask = src_stage;
+		barrier.srcAccessMask = src_access;
+		barrier.dstStageMask = dst_stage;
+		barrier.dstAccessMask = dst_access;
+		barrier.oldLayout = old_layout;
+		barrier.newLayout = new_layout;
+		barrier.image = image;
+		barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+
+		VkDependencyInfo dep{};
+		dep.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+		dep.imageMemoryBarrierCount = 1;
+		dep.pImageMemoryBarriers = &barrier;
+
+		vkCmdPipelineBarrier2(cmd, &dep);
+	}
+
+	void blit_image(VkCommandBuffer cmd, VkImage src, VkImage dst, VkExtent2D src_extent, VkExtent2D dst_extent)
+	{
+		VkImageBlit2 region{};
+		region.sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2;
+		region.srcOffsets[1] = { static_cast<int32_t>(src_extent.width), static_cast<int32_t>(src_extent.height), 1 };
+		region.dstOffsets[1] = { static_cast<int32_t>(dst_extent.width), static_cast<int32_t>(dst_extent.height), 1 };
+		region.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+		region.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+
+		VkBlitImageInfo2 blit{};
+		blit.sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2;
+		blit.srcImage = src;
+		blit.srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		blit.dstImage = dst;
+		blit.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		blit.regionCount = 1;
+		blit.pRegions = &region;
+		blit.filter = VK_FILTER_LINEAR;
+
+		vkCmdBlitImage2(cmd, &blit);
+	}
+
+	void end_frame_present(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkCommandBuffer cmd)
+	{
+		VK_ASSERT(vkEndCommandBuffer(cmd));
+		handle_queues(frame, swapchain, device, surface, window, cmd);
 		frame.current_frame = (frame.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
 }
