@@ -3,8 +3,7 @@
 
 namespace Nevarea::Renderer {
 	void query_swapchain_support(VkPhysicalDevice physical_device, SurfaceContext& surface) {
-		VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface.surface, &surface.capabilities);
-		NEVAREA_ASSERT(result == VK_SUCCESS, "VULKAN SWAPCHAIN", "Could not get physical device surface capabilities!");
+	    VK_ASSERT(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface.surface, &surface.capabilities));
 
 		uint32_t format_count = 0;
 		vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface.surface, &format_count, nullptr);
@@ -175,7 +174,6 @@ namespace Nevarea::Renderer {
 
 		frame_sync.current_frame = 0;
 
-		// image_available: per frame-in-flight slot
 		frame_sync.image_available.resize(MAX_FRAMES_IN_FLIGHT);
 
 		VkSemaphoreCreateInfo semaphore_info{};
