@@ -1,5 +1,4 @@
 #include "VulkanFrames.hpp"
-#include "Core/InternalState.hpp"
 #include "VulkanResourceManager.hpp"
 
 namespace Nevarea::Renderer {
@@ -21,7 +20,7 @@ namespace Nevarea::Renderer {
 		return cmd;
 	}
 
-	VkCommandBuffer begin_frame(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window) {		
+	VkCommandBuffer begin_frame(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window) {
 		uint64_t wait_value = frame.frame_timeline_target[frame.current_frame];
 
 		VkSemaphoreWaitInfo wait_info{};
@@ -68,21 +67,21 @@ namespace Nevarea::Renderer {
 		vkCmdBeginRendering(cmd, &rendering_info);
 	}
 
-	static NEVAREA_FORCE_INLINE void handle_queues(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkCommandBuffer cmd) {
+	static NEVAREA_FORCE_INLINE void handle_queues(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkCommandBuffer cmd, VkPipelineStageFlags2 image_stage) {
 		uint32_t img_idx = swapchain.current_image_index;
 		VkSemaphore signal_semaphores[] = { frame.render_finished[img_idx] };
 
 		VkSemaphoreSubmitInfo wait_info{};
 		wait_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
 		wait_info.semaphore = frame.image_available[frame.current_frame];
-		wait_info.stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+		wait_info.stageMask = image_stage;
 
 		uint64_t signal_value = ++frame.timeline_value;
 
 		VkSemaphoreSubmitInfo signal_infos[2]{};
 		signal_infos[0].sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
 		signal_infos[0].semaphore = frame.render_finished[img_idx];
-		signal_infos[0].stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+		signal_infos[0].stageMask = image_stage;
 
 		signal_infos[1].sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
 		signal_infos[1].semaphore = frame.timeline;
@@ -152,7 +151,7 @@ namespace Nevarea::Renderer {
 
 		VK_ASSERT(vkEndCommandBuffer(cmd));
 
-		handle_queues(frame, swapchain, device, surface, window, cmd);
+		handle_queues(frame, swapchain, device, surface, window, cmd, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT);
 
 		frame.current_frame = (frame.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
@@ -206,7 +205,7 @@ namespace Nevarea::Renderer {
 	void end_frame_present(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkCommandBuffer cmd)
 	{
 		VK_ASSERT(vkEndCommandBuffer(cmd));
-		handle_queues(frame, swapchain, device, surface, window, cmd);
+		handle_queues(frame, swapchain, device, surface, window, cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT);
 		frame.current_frame = (frame.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
 }

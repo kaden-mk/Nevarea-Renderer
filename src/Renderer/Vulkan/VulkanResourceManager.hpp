@@ -12,8 +12,9 @@ namespace Nevarea::Renderer {
 	#define NEVAREA_BUFFER_STORAGE_SIZE 1000
 
 	struct ImageHandle {
-		uint32_t index;
-		uint32_t generation;
+		uint32_t index = UINT32_MAX;
+		uint32_t generation = 0;
+		bool is_valid() const { return index != UINT32_MAX; }
 	};
 
 	struct AllocatedImage {
@@ -25,8 +26,9 @@ namespace Nevarea::Renderer {
 	};
 
 	struct BufferHandle {
-		uint32_t index;
-		uint32_t generation;
+		uint32_t index = UINT32_MAX;
+		uint32_t generation = 0;
+		bool is_valid() const { return index != UINT32_MAX; }
 	};
 
 	struct BufferDescription {

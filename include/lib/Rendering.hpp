@@ -58,6 +58,12 @@ namespace Nevarea {
 		bool is_valid() const { return id != UINT32_MAX; }
 	};
 
+	struct Buffer {
+        uint32_t id = UINT32_MAX;
+        uint32_t generation = 0;
+        bool is_valid() const { return id != UINT32_MAX; }
+    };
+
 	struct RendererCapabilities {
 		bool memory_priority = false;
 		bool pageable_memory = false;
@@ -108,4 +114,9 @@ namespace Nevarea {
 	void renderer_submit_mesh(RenderContext renderer, Mesh mesh, PipelineHandle pipeline);
 	void renderer_dispatch_compute(RenderContext renderer, PipelineHandle pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, uint64_t buffer_address = 0, Image target_image = {});
 	void renderer_present_image(RenderContext renderer, Image handle);
+
+	Buffer renderer_create_buffer(RenderContext context, size_t size, const char* debug_name = "nevarea_buffer");
+    void renderer_destroy_buffer(RenderContext context, Buffer handle);
+    void renderer_update_buffer(RenderContext context, Buffer handle, const void* data, size_t size);
+    uint64_t renderer_get_buffer_address(RenderContext context, Buffer handle);
 }

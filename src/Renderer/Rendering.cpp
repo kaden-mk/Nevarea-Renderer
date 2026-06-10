@@ -1,6 +1,4 @@
 #include "RenderState.hpp"
-#include "Core/InternalState.hpp"
-#include "Core/n_pch.hpp"
 
 namespace Nevarea {
 	namespace {
@@ -257,12 +255,12 @@ namespace Nevarea {
 		RenderState* render_state = resolve(context);
 
 		switch (render_state->api) {
-		case RenderingAPI::VULKAN:
-			render_state->vulkan.compute_dispatches.push_back({ pipeline, groups_x, groups_y, groups_z, { buffer_address, target_image.id } });
-			break;
+    		case RenderingAPI::VULKAN:
+    			render_state->vulkan.compute_dispatches.push_back({ pipeline, groups_x, groups_y, groups_z, { buffer_address, target_image.id } });
+    			break;
 
-		case RenderingAPI::NONE:
-			break;
+    		case RenderingAPI::NONE:
+    			break;
 		}
 	}
 
@@ -273,8 +271,84 @@ namespace Nevarea {
 			case RenderingAPI::VULKAN:
 				render_state->vulkan.present_target = { handle.id, handle.generation };
 				break;
+
 			case RenderingAPI::NONE:
 				break;
 		}
 	}
+
+	Buffer renderer_create_buffer(RenderContext context, size_t size, const char* debug_name) {
+        RenderState* render_state = resolve(context);
+
+        switch (render_state->api) {
+            case RenderingAPI::VULKAN: {
+                Renderer::BufferDescription description{};
+                description.size = size;
+                description.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+                description.memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+                description.name = debug_name;
+
+                Renderer::BufferHandle handle = Renderer::vulkan_create_buffer(render_state->vulkan.resource_manager, description);
+                return { handle.index, handle.generation };
+            }
+
+            case RenderingAPI::NONE:
+                break;
+        }
+
+        return { UINT32_MAX, 0 };
+    }
+
+    void renderer_destroy_buffer(RenderContext context, Buffer handle) {
+        RenderState* render_state = resolve(context);
+
+        switch (render_state->api) {
+            case RenderingAPI::VULKAN:
+                Renderer::vulkan_destroy_buffer(render_state->vulkan.resource_manager, { handle.id, handle.generation });
+                break;
+
+            case RenderingAPI::NONE:
+                break;
+        }
+    }
+
+    void renderer_update_buffer(RenderContext context, Buffer handle, const void* data, size_t size) {
+        RenderState* render_state = resolve(context);
+
+        switch (render_state->api) {
+            case RenderingAPI::VULKAN: {
+                auto& manager = render_state->vulkan.resource_manager;
+
+                NEVAREA_ASSERT(handle.id < manager.buffer_pool.size(), "RESOURCE MANAGER", "Buffer handle out of range!");
+                NEVAREA_ASSERT(handle.generation == manager.generation_pool[handle.id], "RESOURCE MANAGER", "Stale Buffer handle!");
+
+                VmaAllocationInfo alloc_info{};
+                vmaGetAllocationInfo(manager.allocator, manager.allocation_pool[handle.id], &alloc_info);
+                NEVAREA_ASSERT(size <= alloc_info.size, "RESOURCE MANAGER", "renderer_update_buffer: size exceeds buffer allocation!");
+
+                void* mapped_memory = nullptr;
+                VK_ASSERT(vmaMapMemory(manager.allocator, manager.allocation_pool[handle.id], &mapped_memory));
+                memcpy(mapped_memory, data, size);
+                vmaUnmapMemory(manager.allocator, manager.allocation_pool[handle.id]);
+                break;
+            }
+
+            case RenderingAPI::NONE:
+                break;
+        }
+    }
+
+    uint64_t renderer_get_buffer_address(RenderContext context, Buffer handle) {
+        RenderState* render_state = resolve(context);
+
+        switch (render_state->api) {
+            case RenderingAPI::VULKAN:
+                return Renderer::vulkan_get_buffer_address(render_state->vulkan.resource_manager, { handle.id, handle.generation });
+
+                case RenderingAPI::NONE:
+                break;
+        }
+
+        return 0;
+    }
 }
