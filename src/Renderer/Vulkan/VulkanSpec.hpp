@@ -6,15 +6,18 @@ namespace Nevarea::Renderer {
 		"VK_LAYER_KHRONOS_validation"
 	};
 
-	const std::vector<const char*> instance_extensions = {
+	const std::vector<const char*> required_instance_extensions = {
 		VK_KHR_SURFACE_EXTENSION_NAME,
-		VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME,
 		VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
-		VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME,
 
 		#ifdef NEVAREA_PLATFORM_WINDOWS
 			VK_KHR_WIN32_SURFACE_EXTENSION_NAME
 		#endif
+	};
+
+	const std::vector<const char*> optional_instance_extensions = {
+	    VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME,
+		VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME,
 	};
 
 	const std::vector<const char*> required_device_extensions = {

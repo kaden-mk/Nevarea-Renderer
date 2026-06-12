@@ -10,10 +10,10 @@ namespace Nevarea::Renderer {
 		uint32_t queue_family_count = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, nullptr);
 
-		std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
-		vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, queue_families.data());
+		std::vector<VkQueueFamilyProperties> families(queue_family_count);
+		vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, families.data());
 
-		for (uint32_t i = 0; i < queue_family_count; i++) {
+		/*for (uint32_t i = 0; i < queue_family_count; i++) {
 			if (queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
 				indices.graphics_family = i;
 			else if (queue_families[i].queueFlags & VK_QUEUE_COMPUTE_BIT)
@@ -29,7 +29,42 @@ namespace Nevarea::Renderer {
 				indices.present_family = i;
 
 			if (indices.is_complete()) break;
+		}*/
+
+		for (uint32_t i = 0; i < queue_family_count; i++) {
+		    VkQueueFlags flags = families[i].queueFlags;
+
+			if ((flags & VK_QUEUE_GRAPHICS_BIT) && !indices.graphics_family.has_value())
+			    indices.graphics_family = i;
+
+			VkBool32 present_support = VK_FALSE;
+			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &present_support);
+			if (present_support && !indices.present_family.has_value())
+			    indices.present_family = i;
+
+			if (flags & VK_QUEUE_COMPUTE_BIT) {
+			    if (!(flags & VK_QUEUE_GRAPHICS_BIT))
+					indices.compute_family = i;
+			    else if (!indices.compute_family.has_value())
+					indices.compute_family = i;
+			}
+
+			if (flags & VK_QUEUE_TRANSFER_BIT) {
+			    if (!(flags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)))
+					indices.transfer_family = i;
+			    else if (!indices.transfer_family.has_value())
+					indices.transfer_family = i;
+			}
 		}
+
+		if (indices.graphics_family.has_value()) {
+		    VkBool32 gfx_present = VK_FALSE;
+			vkGetPhysicalDeviceSurfaceSupportKHR(device, indices.graphics_family.value(), surface, &gfx_present);
+			if (gfx_present) indices.present_family = indices.graphics_family;
+		}
+
+		if (!indices.compute_family.has_value())  indices.compute_family  = indices.graphics_family;
+		if (!indices.transfer_family.has_value()) indices.transfer_family = indices.graphics_family;
 
 		return indices;
 	}
@@ -99,9 +134,21 @@ namespace Nevarea::Renderer {
 			&& features13.synchronization2
 
 			&& features12.bufferDeviceAddress
+			&& features12.scalarBlockLayout
 			&& features12.timelineSemaphore
-			&& features12.descriptorIndexing
-			&& features12.runtimeDescriptorArray;
+			&& features12.runtimeDescriptorArray
+			&& features12.descriptorBindingPartiallyBound
+			&& features12.shaderStorageBufferArrayNonUniformIndexing
+			&& features12.shaderSampledImageArrayNonUniformIndexing
+			&& features12.shaderStorageImageArrayNonUniformIndexing
+			&& features12.descriptorBindingStorageBufferUpdateAfterBind
+			&& features12.descriptorBindingSampledImageUpdateAfterBind
+			&& features12.descriptorBindingStorageImageUpdateAfterBind
+
+			&& device_features.features.samplerAnisotropy
+			&& device_features.features.vertexPipelineStoresAndAtomics
+			&& device_features.features.fragmentStoresAndAtomics
+			&& device_features.features.shaderInt64;
 	}
 
 	static void query_capabilities(DeviceContext& device_context) {
@@ -144,7 +191,7 @@ namespace Nevarea::Renderer {
 
 		VkPhysicalDeviceMemoryProperties memory_properties;
 		vkGetPhysicalDeviceMemoryProperties(device, &memory_properties);
-		
+
 		uint32_t score = 0;
 
 		switch (device_properties.deviceType) {
@@ -227,7 +274,8 @@ namespace Nevarea::Renderer {
 		std::set<uint32_t> unique_queue_families = {
 			indices.graphics_family.value(),
 			indices.present_family.value(),
-			indices.compute_family.value()
+			indices.compute_family.value(),
+			indices.transfer_family.value()
 		};
 
 		float queue_priority = 1.0f;
@@ -364,10 +412,12 @@ namespace Nevarea::Renderer {
 
 		device_context->graphics_family_index = indices.graphics_family.value();
 		device_context->compute_family_index = indices.compute_family.value();
+		device_context->transfer_family_index = indices.transfer_family.value();
 
 		vkGetDeviceQueue(device_context->device, indices.graphics_family.value(), 0, &device_context->graphics_queue);
 		vkGetDeviceQueue(device_context->device, indices.present_family.value(), 0, &device_context->present_queue);
 		vkGetDeviceQueue(device_context->device, indices.compute_family.value(), 0, &device_context->compute_queue);
+		vkGetDeviceQueue(device_context->device, indices.transfer_family.value(), 0, &device_context->transfer_queue);
 
 		vulkan_debug_init(device_context->device);
 
@@ -375,5 +425,6 @@ namespace Nevarea::Renderer {
 		VK_NAME(device_context->device, VK_OBJECT_TYPE_QUEUE, device_context->graphics_queue, "graphics_queue");
 		VK_NAME(device_context->device, VK_OBJECT_TYPE_QUEUE, device_context->present_queue, "present_queue");
 		VK_NAME(device_context->device, VK_OBJECT_TYPE_QUEUE, device_context->compute_queue, "compute_queue");
+		VK_NAME(device_context->device, VK_OBJECT_TYPE_QUEUE, device_context->transfer_queue, "transfer_queue");
 	}
 }

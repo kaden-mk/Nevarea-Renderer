@@ -27,6 +27,21 @@ namespace Nevarea::Renderer {
 		std::vector<VkExtensionProperties> avaliable_extensions(extension_count);
 		vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, avaliable_extensions.data());
 
+		std::set<std::string> available;
+		for (const auto& extension : avaliable_extensions)
+			available.insert(extension.extensionName);
+
+		std::vector<const char*> enabled_extensions;
+		for (const char* extension : required_instance_extensions) {
+			NEVAREA_ASSERT(available.count(extension) > 0, "VULKAN INSTANCE", "Required instance extension not available!");
+			enabled_extensions.push_back(extension);
+		}
+
+		for (const char* extension : optional_instance_extensions) {
+			if (available.count(extension) > 0) enabled_extensions.push_back(extension);
+			else std::cerr << "[NEVAREA]: optional instance extension '" << extension << "' not available, skipping\n";
+		}
+
 		VkDebugUtilsMessengerCreateInfoEXT debug_create_info{};
 		populate_debug_create_info(debug_create_info);
 
@@ -37,8 +52,8 @@ namespace Nevarea::Renderer {
 		instance_create_info.pApplicationInfo = &app_info;
 		instance_create_info.enabledLayerCount = 0;
 		instance_create_info.ppEnabledLayerNames = nullptr;
-		instance_create_info.enabledExtensionCount = static_cast<uint32_t>(instance_extensions.size());
-		instance_create_info.ppEnabledExtensionNames = instance_extensions.data();
+		instance_create_info.enabledExtensionCount = static_cast<uint32_t>(enabled_extensions.size());
+		instance_create_info.ppEnabledExtensionNames = enabled_extensions.data();
 
 		#ifdef NEVAREA_DEBUG
 			uint32_t available_count = 0;
@@ -215,11 +230,11 @@ namespace Nevarea::Renderer {
 			}
 
 			MeshData& mesh = context.resource_manager.mesh_pool[draw_call.mesh.id];
-				
+
 			PushConstants push{};
 			push.vertex_buffer_address = vulkan_get_buffer_address(context.resource_manager, mesh.vertex_buffer);
 			vkCmdPushConstants(cmd, context.pipelines[draw_call.pipeline.id].layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &push);
-				
+
 			vkCmdDraw(cmd, mesh.vertex_count, 1, 0, 0);
 		}
 

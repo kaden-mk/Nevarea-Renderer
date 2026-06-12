@@ -12,9 +12,11 @@ namespace Nevarea::Renderer {
 		VkQueue graphics_queue;
 		VkQueue present_queue;
 		VkQueue compute_queue;
+		VkQueue transfer_queue;
 
 		uint32_t graphics_family_index;
 		uint32_t compute_family_index;
+		uint32_t transfer_family_index;
 
 		RendererCapabilities capabilities;
 		std::vector<const char*> enabled_optional_extensions;
@@ -24,9 +26,10 @@ namespace Nevarea::Renderer {
 		std::optional<uint32_t> graphics_family;
 		std::optional<uint32_t> present_family;
 		std::optional<uint32_t> compute_family;
+		std::optional<uint32_t> transfer_family;
 
 		bool is_complete() const {
-			return graphics_family.has_value() && present_family.has_value() && compute_family.has_value();
+			return graphics_family.has_value() && present_family.has_value() && compute_family.has_value() && transfer_family.has_value();
 		}
 	};
 

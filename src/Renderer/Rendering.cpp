@@ -139,6 +139,8 @@ namespace Nevarea {
 				return {};
 			}
 		}
+
+		return {};
 	}
 
 	PipelineHandle renderer_create_pipeline(RenderContext context, const char* vert, const char* frag) {
@@ -164,6 +166,8 @@ namespace Nevarea {
 				return {};
 			}
 		}
+
+		return {};
 	}
 
 	void renderer_destroy_pipeline(RenderContext context, PipelineHandle pipeline) {
@@ -223,6 +227,8 @@ namespace Nevarea {
 				return {};
 			}
 		}
+
+		return {};
 	}
 
 	void renderer_destroy_mesh(RenderContext context, Mesh handle) {
