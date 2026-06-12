@@ -107,13 +107,13 @@ namespace Nevarea::Renderer {
 		#endif
 	}
 
-	static void vulkan_context_create_allocator(VkInstance instance, VkPhysicalDevice physical_device, VkDevice device, VmaAllocator& allocator) {
+	static void vulkan_context_create_allocator(VkInstance instance, VkPhysicalDevice physical_device, VkDevice device, VmaAllocator& allocator, bool enable_memory_priority) {
 		VmaAllocatorCreateInfo create_info{};
 		create_info.instance = instance;
 		create_info.device = device;
 		create_info.physicalDevice = physical_device;
 		create_info.vulkanApiVersion = NEVAREA_VULKAN_VERSION;
-		create_info.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+		create_info.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT | (enable_memory_priority ? VMA_ALLOCATOR_CREATE_EXT_MEMORY_PRIORITY_BIT : 0);
 
 		VK_ASSERT(vmaCreateAllocator(&create_info, &allocator));
 	}
@@ -125,7 +125,7 @@ namespace Nevarea::Renderer {
 		vulkan_context_debug_messenger(context.instance, context.debug_messenger);
 		vulkan_context_create_surface(context.window, context.instance, context.surface.surface);
 		vulkan_device_init(context.device, context.instance, context.surface.surface);
-		vulkan_context_create_allocator(context.instance, context.device.physical_device, context.device.device, context.allocator);
+		vulkan_context_create_allocator(context.instance, context.device.physical_device, context.device.device, context.allocator, context.device.capabilities.memory_priority);
 		vulkan_resources_init(context.resource_manager, context.allocator, context.device.device);
 		vulkan_swapchain_init(context.swapchain, context.device, context.surface, context.window);
 		vulkan_frame_sync_init(context.frame_sync, context.device, static_cast<uint32_t>(context.swapchain.images.size()));

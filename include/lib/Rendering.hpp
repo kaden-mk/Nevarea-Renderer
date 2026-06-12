@@ -36,6 +36,7 @@ namespace Nevarea {
 		uint32_t height = 0;
 		Format format = Format::RGBA16_SFLOAT;
 		uint32_t usage = 0;
+		float priority = 0.5f;
 	};
 
 	struct Image {
@@ -86,6 +87,7 @@ namespace Nevarea {
 		uint32_t usage = 0;
 		MemoryLocation memory = MemoryLocation::CPU_TO_GPU;
 		const char* debug_name = "nevarea_buffer";
+		float priority = 0.5f;
 	};
 
 	struct RendererCapabilities {

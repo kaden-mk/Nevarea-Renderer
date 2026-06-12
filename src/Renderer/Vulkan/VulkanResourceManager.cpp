@@ -178,6 +178,7 @@ namespace Nevarea::Renderer {
 
 		VmaAllocationCreateInfo allocation_create_info{};
 		allocation_create_info.usage = to_vma_memory(buffer_description.memory);
+		allocation_create_info.priority = buffer_description.priority;
 
 		VkBuffer buffer = VK_NULL_HANDLE;
 		VmaAllocation allocation = VK_NULL_HANDLE;
@@ -262,6 +263,7 @@ namespace Nevarea::Renderer {
 		VmaAllocationCreateInfo alloc_info{};
 		alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
 		alloc_info.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		alloc_info.priority = description.priority;
 
 		VK_ASSERT(vmaCreateImage(manager.allocator, &image_info, &alloc_info, &img.image, &img.allocation, nullptr));
 		VK_NAME(manager.device, VK_OBJECT_TYPE_IMAGE, img.image, "nevarea_image");
