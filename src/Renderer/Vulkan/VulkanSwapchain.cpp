@@ -49,15 +49,10 @@ namespace Nevarea::Renderer {
 		return { 0, 0 };
 	}
 
-	static VkPresentModeKHR choose_swapchain_present_mode(const std::vector<VkPresentModeKHR>& present_modes) {
-		for (const auto& present_mode : present_modes) {
-			if (present_mode == VK_PRESENT_MODE_MAILBOX_KHR) {
-				std::cout << "Present mode: Mailbox" << std::endl;
-				return present_mode;
-			}
-		}
+	static VkPresentModeKHR choose_swapchain_present_mode(const std::vector<VkPresentModeKHR>& present_modes, VkPresentModeKHR desired) {
+		for (const auto& present_mode : present_modes)
+			if (present_mode == desired) return present_mode;
 
-		std::cout << "Present mode: V-Sync" << std::endl;
 		return VK_PRESENT_MODE_FIFO_KHR;
 	}
 
@@ -107,7 +102,7 @@ namespace Nevarea::Renderer {
 	{
 		VkExtent2D swapchain_extent = wait_for_valid_extent(window, device, surface);
 		VkSurfaceFormatKHR surface_format = choose_surface_format(surface.supported_formats);
-		VkPresentModeKHR swapchain_present_mode = choose_swapchain_present_mode(surface.supported_present_modes);
+		VkPresentModeKHR swapchain_present_mode = choose_swapchain_present_mode(surface.supported_present_modes, swapchain.desired_present_mode);
 
 		VkSwapchainCreateInfoKHR create_info{};
 		create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -159,6 +154,7 @@ namespace Nevarea::Renderer {
 
 		VkSwapchainKHR old_handle = swapchain.swapchain;
 		vulkan_swapchain_init(swapchain, device, surface, window, old_handle);
+		swapchain.resized = true;
 	}
 
 	void vulkan_swapchain_destroy(SwapchainContext& swapchain, VkDevice device) {

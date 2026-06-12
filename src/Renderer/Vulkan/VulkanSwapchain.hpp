@@ -20,6 +20,9 @@ namespace Nevarea::Renderer {
 
         std::vector<VkImage> images;
         std::vector<VkImageView> image_views;
+
+        bool resized = false;
+        VkPresentModeKHR desired_present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
 	};
 
     struct FrameContext {

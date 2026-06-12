@@ -1,5 +1,7 @@
+#include "lib/Rendering.hpp"
 #include "RenderState.hpp"
 #include "Renderer/Vulkan/VulkanContext.hpp"
+#include "lib/WindowSystem.hpp"
 
 namespace Nevarea {
 	namespace {
@@ -14,6 +16,15 @@ namespace Nevarea {
 			NEVAREA_ASSERT(render_state->is_active, "RENDERER", "RenderContext refers to a destroyed renderer!");
 
 			return render_state;
+		}
+
+		static VkPresentModeKHR to_vk_present_mode(PresentMode mode) {
+			switch (mode) {
+				case PresentMode::VSYNC:     return VK_PRESENT_MODE_FIFO_KHR;
+				case PresentMode::MAILBOX:   return VK_PRESENT_MODE_MAILBOX_KHR;
+				case PresentMode::IMMEDIATE: return VK_PRESENT_MODE_IMMEDIATE_KHR;
+			}
+			return VK_PRESENT_MODE_FIFO_KHR;
 		}
 	}
 
@@ -82,6 +93,52 @@ namespace Nevarea {
 				Renderer::vulkan_context_draw(render_state->vulkan);
 				break;
 
+			case RenderingAPI::NONE:
+				break;
+		}
+	}
+
+	NvWinExtent renderer_get_swapchain_extent(RenderContext context) {
+	    RenderState* render_state = resolve(context);
+
+		switch (render_state->api) {
+		    case RenderingAPI::VULKAN: {
+				return { render_state->vulkan.swapchain.extent.width, render_state->vulkan.swapchain.extent.height };
+			}
+
+			case Nevarea::RenderingAPI::NONE: break;
+		}
+
+		return { 0, 0 };
+	}
+
+	bool renderer_swapchain_resized(RenderContext context) {
+	    RenderState* render_state = resolve(context);
+
+		switch (render_state->api) {
+		    case RenderingAPI::VULKAN: {
+				bool was = render_state->vulkan.swapchain.resized;
+				render_state->vulkan.swapchain.resized = false;
+				return was;
+			}
+
+			case RenderingAPI::NONE: break;
+		}
+
+		return false;
+	}
+
+	void renderer_set_present_mode(RenderContext context, PresentMode mode) {
+		RenderState* render_state = resolve(context);
+
+		switch (render_state->api) {
+			case RenderingAPI::VULKAN: {
+				auto& vk = render_state->vulkan;
+				vk.swapchain.desired_present_mode = to_vk_present_mode(mode);
+				Renderer::recreate_swapchain(vk.swapchain, vk.device, vk.surface, vk.window);
+				Renderer::vulkan_frame_sync_ensure_present_semaphores(vk.frame_sync, vk.device.device, static_cast<uint32_t>(vk.swapchain.images.size()));
+				break;
+			}
 			case RenderingAPI::NONE:
 				break;
 		}

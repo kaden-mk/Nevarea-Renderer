@@ -13,24 +13,6 @@ namespace Nevarea::Renderer {
 		std::vector<VkQueueFamilyProperties> families(queue_family_count);
 		vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count, families.data());
 
-		/*for (uint32_t i = 0; i < queue_family_count; i++) {
-			if (queue_families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
-				indices.graphics_family = i;
-			else if (queue_families[i].queueFlags & VK_QUEUE_COMPUTE_BIT)
-				indices.compute_family = i;
-
-			if (!indices.compute_family.has_value())
-				indices.compute_family = indices.graphics_family;
-
-			VkBool32 present_support = false;
-			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &present_support);
-
-			if (present_support)
-				indices.present_family = i;
-
-			if (indices.is_complete()) break;
-		}*/
-
 		for (uint32_t i = 0; i < queue_family_count; i++) {
 		    VkQueueFlags flags = families[i].queueFlags;
 
@@ -327,6 +309,9 @@ namespace Nevarea::Renderer {
 		VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutable_desc{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT };
 		VkPhysicalDeviceDescriptorBufferFeaturesEXT desc_buf{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT };
 		VkPhysicalDeviceDescriptorHeapFeaturesEXT desc_heap{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_FEATURES_EXT };
+		VkPhysicalDeviceAccelerationStructureFeaturesKHR accel_features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR };
+		VkPhysicalDeviceRayQueryFeaturesKHR rq_features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR };
+		VkPhysicalDeviceRayTracingPipelineFeaturesKHR rt_pipe_features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR };
 
 		void* opt_head = nullptr;
 
@@ -386,6 +371,21 @@ namespace Nevarea::Renderer {
 			desc_heap.descriptorHeap = VK_TRUE;
 			desc_heap.pNext = opt_head;
 			opt_head = &desc_heap;
+		}
+		if (device_context->capabilities.acceleration_structure) {
+			accel_features.accelerationStructure = VK_TRUE;
+			accel_features.pNext = opt_head;
+			opt_head = &accel_features;
+		}
+		if (device_context->capabilities.ray_query) {
+			rq_features.rayQuery = VK_TRUE;
+			rq_features.pNext = opt_head;
+			opt_head = &rq_features;
+		}
+		if (device_context->capabilities.ray_tracing_pipeline) {
+			rt_pipe_features.rayTracingPipeline = VK_TRUE;
+			rt_pipe_features.pNext = opt_head;
+			opt_head = &rt_pipe_features;
 		}
 
 		features12.pNext = opt_head;

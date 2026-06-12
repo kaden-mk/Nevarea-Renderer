@@ -1,6 +1,7 @@
 #pragma once
 
 #include "WindowSystem.hpp"
+#include "lib/Core.hpp"
 
 #ifndef MAX_FRAMES_IN_FLIGHT
 #define MAX_FRAMES_IN_FLIGHT 2
@@ -74,6 +75,12 @@ namespace Nevarea {
 
 	enum class MemoryLocation : uint32_t { GPU_ONLY, CPU_TO_GPU, GPU_TO_CPU };
 
+	enum class PresentMode : uint32_t {
+		VSYNC,
+		MAILBOX,
+		IMMEDIATE,
+	};
+
 	struct BufferDescription {
 		size_t size = 0;
 		uint32_t usage = 0;
@@ -115,6 +122,10 @@ namespace Nevarea {
 
 	NEVAREA_API void renderer_hook_window(RenderContext renderer, WindowHandle window);
 	NEVAREA_API void renderer_draw(RenderContext renderer);
+
+	NEVAREA_API NvWinExtent renderer_get_swapchain_extent(RenderContext renderer);
+	NEVAREA_API bool renderer_swapchain_resized(RenderContext renderer);
+	NEVAREA_API void renderer_set_present_mode(RenderContext renderer, PresentMode mode);
 
 	NEVAREA_API const RendererCapabilities& renderer_get_capabilities(RenderContext renderer);
 
