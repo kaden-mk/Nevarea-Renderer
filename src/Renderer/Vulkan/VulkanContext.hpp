@@ -11,10 +11,9 @@
 #include <vk_mem_alloc.h>
 
 namespace Nevarea::Renderer {
-	// ill keep this here for now
-	struct DrawCall {
-		Mesh mesh;
+	struct DrawBucket {
 		PipelineHandle pipeline;
+		std::vector<Mesh> meshes;
 	};
 
 	struct ComputeDispatch {
@@ -40,13 +39,15 @@ namespace Nevarea::Renderer {
 		std::vector<uint32_t> pipeline_generations;
 		std::vector<uint32_t> pipeline_free_list;
 
-		std::vector<DrawCall> draw_list;
+		std::vector<DrawBucket> draw_buckets;
 		std::vector<ComputeDispatch> compute_dispatches;
 	};
 
 	void vulkan_context_init(VulkanContext& context, WindowHandle window);
 	void vulkan_context_draw(VulkanContext& context);
 	void vulkan_context_destroy(VulkanContext& context);
+
+	void vulkan_submit_mesh(VulkanContext& context, Mesh mesh, PipelineHandle pipeline);
 
 	PipelineHandle vulkan_pipeline_add(VulkanContext& context, const PipelineContext& pipeline);
 	PipelineContext& vulkan_pipeline_get(VulkanContext& context, PipelineHandle handle);

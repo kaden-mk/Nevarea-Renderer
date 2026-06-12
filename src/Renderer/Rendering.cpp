@@ -283,7 +283,7 @@ namespace Nevarea {
 
 		switch (render_state->api) {
 			case RenderingAPI::VULKAN:
-				render_state->vulkan.draw_list.push_back({ mesh, pipeline });
+				Renderer::vulkan_submit_mesh(render_state->vulkan, mesh, pipeline);
 				break;
 
 			case RenderingAPI::NONE:

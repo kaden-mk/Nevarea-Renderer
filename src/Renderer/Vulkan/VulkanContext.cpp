@@ -210,7 +210,7 @@ namespace Nevarea::Renderer {
 				VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, 0);
 
 			context.present_target = { UINT32_MAX, 0 };
-			context.draw_list.clear();
+			for (DrawBucket& bucket : context.draw_buckets) bucket.meshes.clear();
 			end_frame_present(context.frame_sync, context.swapchain, context.device, context.surface, context.window, cmd);
 			return;
 		}
@@ -244,34 +244,26 @@ namespace Nevarea::Renderer {
 		vkCmdSetViewport(cmd, 0, 1, &viewport);
 		vkCmdSetScissor(cmd, 0, 1, &scissor);
 
-		// TODO: find a better way to do this, id hate to sort EVERY frame.
-		std::sort(context.draw_list.begin(), context.draw_list.end(),
-			[](const DrawCall& a, const DrawCall& b) {
-				return a.pipeline.id < b.pipeline.id;
-			});
+		for (DrawBucket& bucket : context.draw_buckets) {
+			if (bucket.meshes.empty()) continue;
 
-		uint32_t current_pipeline_id = UINT32_MAX;
+			const PipelineContext& pipeline = vulkan_pipeline_get(context, bucket.pipeline);
 
-		for (const DrawCall& draw_call : context.draw_list) {
-            const PipelineContext& pipeline = vulkan_pipeline_get(context, draw_call.pipeline);
+			vkCmdBindPipeline(cmd, pipeline.bind_point, pipeline.pipeline);
+			vkCmdBindDescriptorSets(cmd, pipeline.bind_point, pipeline.layout, 0, 1, &context.resource_manager.descriptor_set, 0, nullptr);
 
-            if (draw_call.pipeline.id != current_pipeline_id) {
-				current_pipeline_id = draw_call.pipeline.id;
-				vkCmdBindPipeline(cmd, pipeline.bind_point, pipeline.pipeline);
-				vkCmdBindDescriptorSets(cmd, pipeline.bind_point, pipeline.layout, 0, 1, &context.resource_manager.descriptor_set, 0, nullptr);
+			for (Mesh handle : bucket.meshes) {
+				MeshData& mesh = context.resource_manager.mesh_pool[handle.id];
+
+				PushConstants push{};
+				push.vertex_buffer_address = vulkan_get_buffer_address(context.resource_manager, mesh.vertex_buffer);
+				vkCmdPushConstants(cmd, pipeline.layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &push);
+
+				vkCmdDraw(cmd, mesh.vertex_count, 1, 0, 0);
 			}
 
-            MeshData& mesh = context.resource_manager.mesh_pool[draw_call.mesh.id];
-
-			PushConstants push{};
-			push.vertex_buffer_address = vulkan_get_buffer_address(context.resource_manager, mesh.vertex_buffer);
-			vkCmdPushConstants(cmd, pipeline.layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &push);
-
-			vkCmdDraw(cmd, mesh.vertex_count, 1, 0, 0);
+			bucket.meshes.clear();
 		}
-		NEVAREA_ASSERT(context.draw_list.empty(), "RENDERER",
-						"submit_mesh + present_image in the same frame is unsupported - submitted meshes are dropped this frame.");
-		context.draw_list.clear();
 
 		end_frame_rendering(context.frame_sync, context.swapchain, context.device, context.surface, context.window, cmd);
 	}
@@ -300,6 +292,15 @@ namespace Nevarea::Renderer {
 
 		vkDestroySurfaceKHR(context.instance, context.surface.surface, nullptr);
 		vkDestroyInstance(context.instance, nullptr);
+	}
+
+	void vulkan_submit_mesh(VulkanContext& context, Mesh mesh, PipelineHandle pipeline) {
+		if (pipeline.id >= context.draw_buckets.size())
+			context.draw_buckets.resize(pipeline.id + 1);
+
+		DrawBucket& bucket = context.draw_buckets[pipeline.id];
+		bucket.pipeline = pipeline;
+		bucket.meshes.push_back(mesh);
 	}
 
 	PipelineHandle vulkan_pipeline_add(VulkanContext &context, const PipelineContext &pipeline) {
