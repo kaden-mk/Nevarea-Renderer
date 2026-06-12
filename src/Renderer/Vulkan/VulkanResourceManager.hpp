@@ -23,6 +23,7 @@ namespace Nevarea::Renderer {
 		VmaAllocation allocation = VK_NULL_HANDLE;
 		VkExtent2D extent = {};
 		VkFormat format = VK_FORMAT_UNDEFINED;
+		VkImageLayout current_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 	};
 
 	struct BufferHandle {

@@ -131,6 +131,14 @@ namespace Nevarea::Renderer {
 		vulkan_frame_sync_init(context.frame_sync, context.device, static_cast<uint32_t>(context.swapchain.images.size()));
 	}
 
+	static void transition_tracked(VkCommandBuffer cmd, AllocatedImage& img, VkImageLayout new_layout,
+		VkPipelineStageFlags2 src_stage, VkAccessFlags2 src_access,
+		VkPipelineStageFlags2 dst_stage, VkAccessFlags2 dst_access)
+	{
+		transition_image(cmd, img.image, img.current_layout, new_layout, src_stage, src_access, dst_stage, dst_access);
+		img.current_layout = new_layout;
+	}
+
 	void vulkan_context_draw(VulkanContext& context) {
 		VkCommandBuffer cmd = begin_frame(context.frame_sync, context.swapchain, context.device, context.surface, context.window);
 		if (cmd == VK_NULL_HANDLE) return;
@@ -138,29 +146,11 @@ namespace Nevarea::Renderer {
 		bool present = context.present_target.index != UINT32_MAX;
 		bool had_compute = !context.compute_dispatches.empty();
 
-		/*if (present) {
-			AllocatedImage& target = vulkan_get_image(context.resource_manager, context.present_target);
-			transition_image(cmd, target.image,
-				VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
-				VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0,
-				VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT);
-		}
-
-		for (const ComputeDispatch& dispatch : context.compute_dispatches) {
-			const PipelineContext& pipeline = vulkan_pipeline_get(context, dispatch.pipeline);
-			vkCmdBindPipeline(cmd, pipeline.bind_point, pipeline.pipeline);
-			vkCmdBindDescriptorSets(cmd, pipeline.bind_point, pipeline.layout, 0, 1, &context.resource_manager.descriptor_set, 0, nullptr);
-			vkCmdPushConstants(cmd, pipeline.layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(PushConstants), &dispatch.push);
-			vkCmdDispatch(cmd, dispatch.groups_x, dispatch.groups_y, dispatch.groups_z);
-		}
-		context.compute_dispatches.clear();*/
-
 		if (present) {
 			AllocatedImage& target = vulkan_get_image(context.resource_manager, context.present_target);
-			transition_image(cmd, target.image,
-				VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
-				VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0,
-				VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT);
+			transition_tracked(cmd, target, VK_IMAGE_LAYOUT_GENERAL,
+				VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
+				VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT);
 		}
 
 		for (size_t i = 0; i < context.compute_dispatches.size(); i++) {
@@ -170,10 +160,9 @@ namespace Nevarea::Renderer {
 			uint32_t img = dispatch.push.image_index;
 			if (img != UINT32_MAX && img != context.present_target.index
 				&& img < context.resource_manager.image_pool.size()) {
-				transition_image(cmd, context.resource_manager.image_pool[img].image,
-					VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
-					VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0,
-					VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT);
+				transition_tracked(cmd, context.resource_manager.image_pool[img], VK_IMAGE_LAYOUT_GENERAL,
+					VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
+					VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT);
 			}
 
 			vkCmdBindPipeline(cmd, pipeline.bind_point, pipeline.pipeline);
@@ -202,8 +191,7 @@ namespace Nevarea::Renderer {
 			AllocatedImage& target = vulkan_get_image(context.resource_manager, context.present_target);
 			VkImage sc = context.swapchain.images[context.swapchain.current_image_index];
 
-			transition_image(cmd, target.image,
-				VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+			transition_tracked(cmd, target, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 				VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
 				VK_PIPELINE_STAGE_2_BLIT_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
 
