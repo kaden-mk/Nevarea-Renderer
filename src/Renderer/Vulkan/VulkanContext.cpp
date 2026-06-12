@@ -3,7 +3,6 @@
 #include "VulkanSpec.hpp"
 #include "VulkanFrames.hpp"
 
-#include "Core/InternalState.hpp"
 #include "Core/n_pch.hpp"
 #include <lib/Rendering.hpp>
 
@@ -22,10 +21,10 @@ namespace Nevarea::Renderer {
 		app_info.apiVersion = NEVAREA_VULKAN_VERSION;
 
 		uint32_t extension_count = 0;
-		vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
+		VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr));
 
 		std::vector<VkExtensionProperties> avaliable_extensions(extension_count);
-		vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, avaliable_extensions.data());
+		VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, avaliable_extensions.data()));
 
 		std::set<std::string> available;
 		for (const auto& extension : avaliable_extensions)
@@ -57,9 +56,9 @@ namespace Nevarea::Renderer {
 
 		#ifdef NEVAREA_DEBUG
 			uint32_t available_count = 0;
-			vkEnumerateInstanceLayerProperties(&available_count, nullptr);
+			VK_CHECK(vkEnumerateInstanceLayerProperties(&available_count, nullptr));
 			std::vector<VkLayerProperties> available_layers(available_count);
-			vkEnumerateInstanceLayerProperties(&available_count, available_layers.data());
+			VK_CHECK(vkEnumerateInstanceLayerProperties(&available_count, available_layers.data()));
 
 			std::vector<const char*> enabled_layers;
 			for (const char* requested : validation_layers) {

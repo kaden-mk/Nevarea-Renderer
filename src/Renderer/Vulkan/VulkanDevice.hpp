@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Core/n_pch.hpp"
-#include "Core/InternalState.hpp"
 #include "lib/Rendering.hpp"
 
 namespace Nevarea::Renderer {

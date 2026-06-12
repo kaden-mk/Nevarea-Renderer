@@ -3,10 +3,6 @@
 #include "Core/n_pch.hpp"
 
 namespace Nevarea::Renderer {
-	namespace {
-		PFN_vkSetDebugUtilsObjectNameEXT pfn_set_debug_name = nullptr;
-	}
-
 	VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger_callback([[maybe_unused]] VkDebugUtilsMessageSeverityFlagBitsEXT message_severity, [[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT message_type, const VkDebugUtilsMessengerCallbackDataEXT* callback_data, [[maybe_unused]] void* user_data);
 	VkResult create_debug_utils_messenger_ext(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* create_info, const VkAllocationCallbacks* allocator, VkDebugUtilsMessengerEXT* debug_messenger);
 	void destroy_debug_utils_messenger_ext(VkInstance instance, VkDebugUtilsMessengerEXT debug_messenger, const VkAllocationCallbacks* allocator);

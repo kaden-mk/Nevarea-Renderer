@@ -1,6 +1,5 @@
 #include "Platform/WindowSystemInternal.hpp"
 
-#include "Core/InternalState.hpp"
 #include "Core/n_pch.hpp"
 
 namespace Nevarea {
@@ -8,7 +7,6 @@ namespace Nevarea {
 		struct WindowState {
 			uint32_t width;
 			uint32_t height;
-			bool framebuffer_resized;
 			bool is_active;
 
 			#ifdef NEVAREA_PLATFORM_WINDOWS
@@ -71,7 +69,6 @@ namespace Nevarea {
 		WindowState* window_state = resolve(window);
 		window_state->width = extent.width;
 		window_state->height = extent.height;
-		window_state->framebuffer_resized = true;
 	}
 
 	#ifdef NEVAREA_PLATFORM_WINDOWS

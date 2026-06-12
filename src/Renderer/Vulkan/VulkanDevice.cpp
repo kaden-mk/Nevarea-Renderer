@@ -71,10 +71,10 @@ namespace Nevarea::Renderer {
 
 	static std::set<std::string> get_available_extensions(VkPhysicalDevice device) {
 		uint32_t extension_count = 0;
-		vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count, nullptr);
+		VK_CHECK(vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count, nullptr));
 
 		std::vector<VkExtensionProperties> extensions(extension_count);
-		vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count, extensions.data());
+		VK_CHECK(vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count, extensions.data()));
 
 		std::set<std::string> available;
 		for (const auto& extension : extensions)
@@ -239,8 +239,6 @@ namespace Nevarea::Renderer {
 		vulkan_device_pick_physical_device(instance, surface, &device_context);
 		query_capabilities(device_context);
 		vulkan_device_create_logical_device(surface, &device_context);
-
-		vulkan_debug_init(device_context.device);
 	}
 
 	void vulkan_device_destroy(DeviceContext* device_context)
@@ -251,10 +249,10 @@ namespace Nevarea::Renderer {
 	void vulkan_device_pick_physical_device(VkInstance instance, VkSurfaceKHR surface, DeviceContext* device_context)
 	{
 		uint32_t physical_device_count = 0;
-		vkEnumeratePhysicalDevices(instance, &physical_device_count, nullptr);
+		VK_CHECK(vkEnumeratePhysicalDevices(instance, &physical_device_count, nullptr));
 
 		std::vector<VkPhysicalDevice> physical_devices(physical_device_count);
-		vkEnumeratePhysicalDevices(instance, &physical_device_count, physical_devices.data());
+		VK_CHECK(vkEnumeratePhysicalDevices(instance, &physical_device_count, physical_devices.data()));
 
 		device_context->physical_device = pick_best_compatible_device(physical_devices, surface);
 

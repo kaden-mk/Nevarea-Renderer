@@ -21,7 +21,6 @@ add_library(NevareaRenderer ${NEVAREA_LIB_TYPE}
     src/Renderer/Vulkan/VulkanContext.cpp
     src/Renderer/Vulkan/VulkanDevice.cpp
     src/Renderer/Vulkan/VulkanSwapchain.cpp
-    src/Core/Config.cpp
     src/Renderer/Vulkan/VulkanFrames.cpp
     src/Renderer/Rendering.cpp
  "src/Renderer/Vulkan/VulkanAllocator.cpp" "src/Renderer/Vulkan/VulkanResourceManager.cpp" "src/Renderer/Vulkan/VulkanPipeline.cpp" "src/Renderer/Vulkan/VulkanDebug.cpp")
@@ -37,10 +36,6 @@ target_compile_definitions(NevareaRenderer PUBLIC
 if(NEVAREA_BUILD_DYNAMIC)
   target_compile_definitions(NevareaRenderer PUBLIC NEVAREA_BUILD_DLL)
   target_compile_definitions(NevareaRenderer PRIVATE NEVAREA_RENDERER_EXPORT)
-
-  set_target_properties(NevareaRenderer PROPERTIES
-        WINDOWS_EXPORT_ALL_SYMBOLS ON
-    )
 endif()
 
 target_include_directories(NevareaRenderer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)

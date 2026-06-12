@@ -6,17 +6,17 @@ namespace Nevarea::Renderer {
 	    VK_ASSERT(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physical_device, surface.surface, &surface.capabilities));
 
 		uint32_t format_count = 0;
-		vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface.surface, &format_count, nullptr);
+		VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface.surface, &format_count, nullptr));
 		if (format_count > 0) {
 			surface.supported_formats.resize(format_count);
-			vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface.surface, &format_count, surface.supported_formats.data());
+			VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(physical_device, surface.surface, &format_count, surface.supported_formats.data()));
 		}
 
 		uint32_t present_mode_count = 0;
-		vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface.surface, &present_mode_count, nullptr);
+		VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface.surface, &present_mode_count, nullptr));
 		if (present_mode_count > 0) {
 			surface.supported_present_modes.resize(present_mode_count);
-			vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface.surface, &present_mode_count, surface.supported_present_modes.data());
+			VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(physical_device, surface.surface, &present_mode_count, surface.supported_present_modes.data()));
 		}
 	}
 
@@ -142,9 +142,9 @@ namespace Nevarea::Renderer {
 		swapchain.extent = swapchain_extent;
 
 		uint32_t swapchain_image_count = 0;
-		vkGetSwapchainImagesKHR(device.device, swapchain.swapchain, &swapchain_image_count, nullptr);
+		VK_CHECK(vkGetSwapchainImagesKHR(device.device, swapchain.swapchain, &swapchain_image_count, nullptr));
 		swapchain.images.resize(swapchain_image_count);
-		vkGetSwapchainImagesKHR(device.device, swapchain.swapchain, &swapchain_image_count, swapchain.images.data());
+		VK_CHECK(vkGetSwapchainImagesKHR(device.device, swapchain.swapchain, &swapchain_image_count, swapchain.images.data()));
 
 		vulkan_swapchain_image_views(swapchain, device.device);
 	}

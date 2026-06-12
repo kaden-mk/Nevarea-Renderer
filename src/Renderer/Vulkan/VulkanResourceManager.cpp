@@ -143,6 +143,7 @@ namespace Nevarea::Renderer {
 
 		for (auto& img : manager.image_pool) {
 			if (img.image != VK_NULL_HANDLE) {
+				std::cerr << "[NEVAREA]: [RESOURCE MANAGER] Leaked image" << std::endl;
 				vkDestroyImageView(manager.device, img.view, nullptr);
 				vmaDestroyImage(manager.allocator, img.image, img.allocation);
 			}
@@ -345,8 +346,8 @@ namespace Nevarea::Renderer {
 
 		BufferHandle handle = vulkan_create_buffer(manager, description);
 
-		void* data;
-		vmaMapMemory(manager.allocator, manager.allocation_pool[handle.index], &data);
+		void* data = nullptr;
+		VK_ASSERT(vmaMapMemory(manager.allocator, manager.allocation_pool[handle.index], &data));
 		memcpy(data, vertices, description.size);
 		vmaUnmapMemory(manager.allocator, manager.allocation_pool[handle.index]);
 

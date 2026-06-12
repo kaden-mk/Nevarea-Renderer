@@ -110,30 +110,30 @@ namespace Nevarea {
 		bool device_generated_commands = false;
 	};
 
-	RenderContext renderer_create(RenderingAPI api);
-	void renderer_destroy(RenderContext renderer);
+	NEVAREA_API RenderContext renderer_create(RenderingAPI api);
+	NEVAREA_API void renderer_destroy(RenderContext renderer);
 
-	void renderer_hook_window(RenderContext renderer, WindowHandle window);
-	void renderer_draw(RenderContext renderer);
+	NEVAREA_API void renderer_hook_window(RenderContext renderer, WindowHandle window);
+	NEVAREA_API void renderer_draw(RenderContext renderer);
 
-	const RendererCapabilities& renderer_get_capabilities(RenderContext renderer);
+	NEVAREA_API const RendererCapabilities& renderer_get_capabilities(RenderContext renderer);
 
-	PipelineHandle renderer_create_pipeline(RenderContext renderer, const char* vert, const char* frag);
-	PipelineHandle renderer_create_compute_pipeline(RenderContext renderer, const char* compute);
-	void renderer_destroy_pipeline(RenderContext renderer, PipelineHandle pipeline);
+	NEVAREA_API PipelineHandle renderer_create_pipeline(RenderContext renderer, const char* vert, const char* frag);
+	NEVAREA_API PipelineHandle renderer_create_compute_pipeline(RenderContext renderer, const char* compute);
+	NEVAREA_API void renderer_destroy_pipeline(RenderContext renderer, PipelineHandle pipeline);
 
-	Image renderer_create_image(RenderContext renderer, const ImageDescription& description);
-	void renderer_destroy_image(RenderContext renderer, Image handle);
+	NEVAREA_API Image renderer_create_image(RenderContext renderer, const ImageDescription& description);
+	NEVAREA_API void renderer_destroy_image(RenderContext renderer, Image handle);
 
-	Mesh renderer_create_mesh(RenderContext renderer, Vertex* vertices, uint32_t count);
-	void renderer_destroy_mesh(RenderContext renderer, Mesh handle);
+	NEVAREA_API Mesh renderer_create_mesh(RenderContext renderer, Vertex* vertices, uint32_t count);
+	NEVAREA_API void renderer_destroy_mesh(RenderContext renderer, Mesh handle);
 
-	void renderer_submit_mesh(RenderContext renderer, Mesh mesh, PipelineHandle pipeline);
-	void renderer_dispatch_compute(RenderContext renderer, PipelineHandle pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, uint64_t buffer_address = 0, Image target_image = {});
-	void renderer_present_image(RenderContext renderer, Image handle);
+	NEVAREA_API void renderer_submit_mesh(RenderContext renderer, Mesh mesh, PipelineHandle pipeline);
+	NEVAREA_API void renderer_dispatch_compute(RenderContext renderer, PipelineHandle pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, uint64_t buffer_address = 0, Image target_image = {});
+	NEVAREA_API void renderer_present_image(RenderContext renderer, Image handle);
 
-	Buffer renderer_create_buffer(RenderContext context, const BufferDescription& description);
-    void renderer_destroy_buffer(RenderContext context, Buffer handle);
-    void renderer_update_buffer(RenderContext context, Buffer handle, const void* data, size_t size);
-    uint64_t renderer_get_buffer_address(RenderContext context, Buffer handle);
+	NEVAREA_API Buffer renderer_create_buffer(RenderContext context, const BufferDescription& description);
+	NEVAREA_API void renderer_destroy_buffer(RenderContext context, Buffer handle);
+	NEVAREA_API void renderer_update_buffer(RenderContext context, Buffer handle, const void* data, size_t size);
+	NEVAREA_API uint64_t renderer_get_buffer_address(RenderContext context, Buffer handle);
 }

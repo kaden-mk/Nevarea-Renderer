@@ -1,6 +1,10 @@
 #include "VulkanDebug.hpp"
 
 namespace Nevarea::Renderer {
+	namespace {
+		PFN_vkSetDebugUtilsObjectNameEXT pfn_set_debug_name = nullptr;
+	}
+
 	VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger_callback(
 		[[maybe_unused]] VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
 		[[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT message_type,

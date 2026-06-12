@@ -12,11 +12,11 @@ namespace Nevarea {
 		uint32_t height;
 	};
 
-	WindowHandle window_create(void* native_handle);
-	void window_destroy(WindowHandle window);
+	NEVAREA_API WindowHandle window_create(void* native_handle);
+	NEVAREA_API void window_destroy(WindowHandle window);
 
-	NvWinExtent window_get_extent(WindowHandle window);
-	void window_set_extent(WindowHandle window, NvWinExtent extent);
+	NEVAREA_API NvWinExtent window_get_extent(WindowHandle window);
+	NEVAREA_API void window_set_extent(WindowHandle window, NvWinExtent extent);
 
-	void window_system_wait_events();
+	NEVAREA_API void window_system_wait_events();
 }

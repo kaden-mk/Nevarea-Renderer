@@ -3,7 +3,6 @@
 #include "VulkanDevice.hpp"
 #include "lib/WindowSystem.hpp"
 
-#include "Core/InternalState.hpp"
 #include "Core/n_pch.hpp"
 #include <lib/Rendering.hpp>
 
