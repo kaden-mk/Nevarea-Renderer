@@ -37,6 +37,9 @@ namespace Nevarea::Renderer {
 		ImageHandle present_target = { UINT32_MAX, 0 };
 
 		std::vector<PipelineContext> pipelines;
+		std::vector<uint32_t> pipeline_generations;
+		std::vector<uint32_t> pipeline_free_list;
+
 		std::vector<DrawCall> draw_list;
 		std::vector<ComputeDispatch> compute_dispatches;
 	};
@@ -44,4 +47,8 @@ namespace Nevarea::Renderer {
 	void vulkan_context_init(VulkanContext& context, WindowHandle window);
 	void vulkan_context_draw(VulkanContext& context);
 	void vulkan_context_destroy(VulkanContext& context);
+
+	PipelineHandle vulkan_pipeline_add(VulkanContext& context, const PipelineContext& pipeline);
+	PipelineContext& vulkan_pipeline_get(VulkanContext& context, PipelineHandle handle);
+	void vulkan_pipeline_remove(VulkanContext& context, PipelineHandle handle);
 }

@@ -1,4 +1,5 @@
 #include "RenderState.hpp"
+#include "Renderer/Vulkan/VulkanContext.hpp"
 
 namespace Nevarea {
 	namespace {
@@ -131,8 +132,7 @@ namespace Nevarea {
 					compute
 				);
 
-				render_state->vulkan.pipelines.push_back(pipeline);
-				return { static_cast<uint32_t>(render_state->vulkan.pipelines.size() - 1) };
+				return Renderer::vulkan_pipeline_add(render_state->vulkan, pipeline);
 			}
 
 			case RenderingAPI::NONE: {
@@ -158,8 +158,7 @@ namespace Nevarea {
 					frag
 				);
 
-				render_state->vulkan.pipelines.push_back(pipeline);
-				return { static_cast<uint32_t>(render_state->vulkan.pipelines.size() - 1) };
+				return Renderer::vulkan_pipeline_add(render_state->vulkan, pipeline);
 			}
 
 			case RenderingAPI::NONE: {
@@ -176,7 +175,7 @@ namespace Nevarea {
 		switch (render_state->api) {
 			case RenderingAPI::VULKAN: {
 				auto& vulkan_renderer = render_state->vulkan;
-				Renderer::vulkan_pipeline_destroy(vulkan_renderer.pipelines[pipeline.id], vulkan_renderer.device.device, vulkan_renderer.frame_sync);
+				Renderer::vulkan_pipeline_remove(vulkan_renderer, pipeline);
 				break;
 			}
 

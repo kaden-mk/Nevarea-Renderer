@@ -55,6 +55,7 @@ namespace Nevarea {
 
 	struct PipelineHandle {
 		uint32_t id = UINT32_MAX;
+		uint32_t generation = 0;
 		bool is_valid() const { return id != UINT32_MAX; }
 	};
 

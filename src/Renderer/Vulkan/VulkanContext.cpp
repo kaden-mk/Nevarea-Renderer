@@ -148,7 +148,7 @@ namespace Nevarea::Renderer {
 		}
 
 		for (const ComputeDispatch& dispatch : context.compute_dispatches) {
-			const PipelineContext& pipeline = context.pipelines[dispatch.pipeline.id];
+			const PipelineContext& pipeline = vulkan_pipeline_get(context, dispatch.pipeline);
 			vkCmdBindPipeline(cmd, pipeline.bind_point, pipeline.pipeline);
 			vkCmdBindDescriptorSets(cmd, pipeline.bind_point, pipeline.layout, 0, 1, &context.resource_manager.descriptor_set, 0, nullptr);
 			vkCmdPushConstants(cmd, pipeline.layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(PushConstants), &dispatch.push);
@@ -221,19 +221,19 @@ namespace Nevarea::Renderer {
 		uint32_t current_pipeline_id = UINT32_MAX;
 
 		for (const DrawCall& draw_call : context.draw_list) {
-			if (draw_call.pipeline.id != current_pipeline_id) {
-				current_pipeline_id = draw_call.pipeline.id;
+            const PipelineContext& pipeline = vulkan_pipeline_get(context, draw_call.pipeline);
 
-				const PipelineContext& pipeline = context.pipelines[current_pipeline_id];
+            if (draw_call.pipeline.id != current_pipeline_id) {
+				current_pipeline_id = draw_call.pipeline.id;
 				vkCmdBindPipeline(cmd, pipeline.bind_point, pipeline.pipeline);
 				vkCmdBindDescriptorSets(cmd, pipeline.bind_point, pipeline.layout, 0, 1, &context.resource_manager.descriptor_set, 0, nullptr);
 			}
 
-			MeshData& mesh = context.resource_manager.mesh_pool[draw_call.mesh.id];
+            MeshData& mesh = context.resource_manager.mesh_pool[draw_call.mesh.id];
 
 			PushConstants push{};
 			push.vertex_buffer_address = vulkan_get_buffer_address(context.resource_manager, mesh.vertex_buffer);
-			vkCmdPushConstants(cmd, context.pipelines[draw_call.pipeline.id].layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &push);
+			vkCmdPushConstants(cmd, pipeline.layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &push);
 
 			vkCmdDraw(cmd, mesh.vertex_count, 1, 0, 0);
 		}
@@ -248,7 +248,8 @@ namespace Nevarea::Renderer {
 		vkDeviceWaitIdle(context.device.device);
 
 		for (PipelineContext& pipeline : context.pipelines)
-			vulkan_pipeline_destroy(pipeline, context.device.device, context.frame_sync);
+		    if (pipeline.pipeline != VK_NULL_HANDLE)
+				vulkan_pipeline_destroy(pipeline, context.device.device, context.frame_sync);
 
 		for (auto& queue : context.frame_sync.deletion_queues) vulkan_resources_flush_deletors(queue);
 
@@ -266,5 +267,35 @@ namespace Nevarea::Renderer {
 
 		vkDestroySurfaceKHR(context.instance, context.surface.surface, nullptr);
 		vkDestroyInstance(context.instance, nullptr);
+	}
+
+	PipelineHandle vulkan_pipeline_add(VulkanContext &context, const PipelineContext &pipeline) {
+	    uint32_t index;
+
+		if (!context.pipeline_free_list.empty()) {
+		    index = context.pipeline_free_list.back();
+		    context.pipeline_free_list.pop_back();
+		    context.pipelines[index] = pipeline;
+		} else {
+		    index = static_cast<uint32_t>(context.pipelines.size());
+		    context.pipelines.push_back(pipeline);
+		    context.pipeline_generations.push_back(0);
+		}
+
+		return { index, context.pipeline_generations[index] };
+	}
+
+	PipelineContext& vulkan_pipeline_get(VulkanContext& context, PipelineHandle handle) {
+		NEVAREA_ASSERT(handle.id < context.pipelines.size(), "PIPELINE", "PipelineHandle out of range!");
+		NEVAREA_ASSERT(handle.generation == context.pipeline_generations[handle.id], "PIPELINE", "Stale PipelineHandle (generation mismatch)!");
+		return context.pipelines[handle.id];
+	}
+
+	void vulkan_pipeline_remove(VulkanContext& context, PipelineHandle handle) {
+		PipelineContext& pipeline = vulkan_pipeline_get(context, handle);
+		vulkan_pipeline_destroy(pipeline, context.device.device, context.frame_sync);
+		context.pipelines[handle.id] = {};
+		context.pipeline_generations[handle.id]++;
+		context.pipeline_free_list.push_back(handle.id);
 	}
 }
