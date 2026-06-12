@@ -5,6 +5,44 @@
 #include "lib/Rendering.hpp"
 
 namespace Nevarea::Renderer {
+    static VkBufferUsageFlags to_vk_buffer_usage(uint32_t usage) {
+		VkBufferUsageFlags flags = 0;
+		if (usage & BufferUsage::STORAGE) flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		if (usage & BufferUsage::UNIFORM) flags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		if (usage & BufferUsage::INDEX) flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+		if (usage & BufferUsage::INDIRECT) flags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+		if (usage & BufferUsage::TRANSFER_SRC) flags |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		if (usage & BufferUsage::TRANSFER_DST) flags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		return flags;
+	}
+
+	static VmaMemoryUsage to_vma_memory(MemoryLocation location) {
+		switch (location) {
+			case MemoryLocation::GPU_ONLY: return VMA_MEMORY_USAGE_GPU_ONLY;
+			case MemoryLocation::CPU_TO_GPU: return VMA_MEMORY_USAGE_CPU_TO_GPU;
+			case MemoryLocation::GPU_TO_CPU: return VMA_MEMORY_USAGE_GPU_TO_CPU;
+		}
+		return VMA_MEMORY_USAGE_CPU_TO_GPU;
+	}
+
+	static VkFormat to_vk_format(Format format) {
+		switch (format) {
+			case Format::RGBA8_UNORM: return VK_FORMAT_R8G8B8A8_UNORM;
+			case Format::RGBA16_SFLOAT: return VK_FORMAT_R16G16B16A16_SFLOAT;
+		}
+		return VK_FORMAT_UNDEFINED;
+	}
+
+	static VkImageUsageFlags to_vk_image_usage(uint32_t usage) {
+		VkImageUsageFlags flags = 0;
+		if (usage & ImageUsage::STORAGE) flags |= VK_IMAGE_USAGE_STORAGE_BIT;
+		if (usage & ImageUsage::SAMPLED) flags |= VK_IMAGE_USAGE_SAMPLED_BIT;
+		if (usage & ImageUsage::TRANSFER_SRC) flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+		if (usage & ImageUsage::TRANSFER_DST) flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+		if (usage & ImageUsage::COLOR_TARGET) flags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+		return flags;
+	}
+
 	void vulkan_create_descriptor_pool(ResourceManager& manager) {
 		VkDescriptorPoolSize pool_sizes[] = {
 			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, NEVAREA_BUFFER_IMAGE_SIZE },
@@ -113,7 +151,7 @@ namespace Nevarea::Renderer {
 		manager.image_pool.clear();
 		manager.image_generation_pool.clear();
 		manager.image_free_list.clear();
-	
+
 		vkDestroyDescriptorSetLayout(manager.device, manager.descriptor_layout, nullptr);
 		vkDestroyDescriptorPool(manager.device, manager.descriptor_pool, nullptr);
 	}
@@ -134,17 +172,17 @@ namespace Nevarea::Renderer {
 		VkBufferCreateInfo buffer_create_info{};
 		buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 		buffer_create_info.size = buffer_description.size;
-		buffer_create_info.usage = buffer_description.usage | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+		buffer_create_info.usage = to_vk_buffer_usage(buffer_description.usage) | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 		buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
 		VmaAllocationCreateInfo allocation_create_info{};
-		allocation_create_info.usage = buffer_description.memory_usage;
+		allocation_create_info.usage = to_vma_memory(buffer_description.memory);
 
 		VkBuffer buffer = VK_NULL_HANDLE;
 		VmaAllocation allocation = VK_NULL_HANDLE;
 
 		VK_ASSERT(vmaCreateBuffer(manager.allocator, &buffer_create_info, &allocation_create_info, &buffer, &allocation, nullptr));
-		VK_NAME(manager.device, VK_OBJECT_TYPE_BUFFER, buffer, buffer_description.name);
+		VK_NAME(manager.device, VK_OBJECT_TYPE_BUFFER, buffer, buffer_description.debug_name);
 
 		uint32_t index;
 		if (!manager.free_list.empty()) {
@@ -199,8 +237,12 @@ namespace Nevarea::Renderer {
 		manager.free_list.push_back(handle.index);
 	}
 
-	ImageHandle vulkan_create_image(ResourceManager& manager, VkExtent2D extent, VkFormat format, VkImageUsageFlags usage)
+	ImageHandle vulkan_create_image(ResourceManager& manager, const ImageDescription& description)
 	{
+	    VkExtent2D extent = { description.width, description.height };
+	    VkFormat format = to_vk_format(description.format);
+	    VkImageUsageFlags usage = to_vk_image_usage(description.usage);
+
 		AllocatedImage img{};
 		img.extent = extent;
 		img.format = format;
@@ -295,11 +337,11 @@ namespace Nevarea::Renderer {
 	}
 
 	Mesh vulkan_create_mesh(ResourceManager& manager, Vertex* vertices, uint32_t count) {
-		BufferDescription description{};
-		description.size = sizeof(Vertex) * count;
-		description.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-		description.memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-		description.name = "mesh_vertex_buffer";
+    	BufferDescription description{};
+    	description.size = sizeof(Vertex) * count;
+    	description.usage = BufferUsage::STORAGE;
+    	description.memory = MemoryLocation::CPU_TO_GPU;
+    	description.debug_name = "mesh_vertex_buffer";
 
 		BufferHandle handle = vulkan_create_buffer(manager, description);
 
@@ -343,7 +385,7 @@ namespace Nevarea::Renderer {
 		vulkan_resources_push_deletor(frame.deletion_queues[frame.current_frame], [allocator, buffer, allocation]() {
 			vmaDestroyBuffer(allocator, buffer, allocation);
 		});
-	
+
 		manager.buffer_pool[buffer_id] = VK_NULL_HANDLE;
 		manager.generation_pool[buffer_id]++;
 		manager.free_list.push_back(buffer_id);

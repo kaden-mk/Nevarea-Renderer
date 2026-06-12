@@ -31,13 +31,6 @@ namespace Nevarea::Renderer {
 		bool is_valid() const { return index != UINT32_MAX; }
 	};
 
-	struct BufferDescription {
-		VkDeviceSize size;
-		VkBufferUsageFlags usage;        
-		VmaMemoryUsage memory_usage;
-		const char* name = "nevarea_vulkan_buffer";
-	};
-
 	struct MeshData {
 		BufferHandle vertex_buffer;
 		uint32_t vertex_count;
@@ -77,7 +70,7 @@ namespace Nevarea::Renderer {
 	uint64_t vulkan_get_buffer_address(const ResourceManager& manager, BufferHandle handle);
 	void vulkan_destroy_buffer(ResourceManager&, BufferHandle handle);
 
-	ImageHandle vulkan_create_image(ResourceManager& manager, VkExtent2D extent, VkFormat format, VkImageUsageFlags usage);
+	ImageHandle vulkan_create_image(ResourceManager& manager, const ImageDescription& description);
 	AllocatedImage& vulkan_get_image(ResourceManager& manager, ImageHandle handle);
 	void vulkan_destroy_image(ResourceManager& manager, ImageHandle handle, FrameContext& frame);
 

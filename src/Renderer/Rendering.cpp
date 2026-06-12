@@ -15,24 +15,6 @@ namespace Nevarea {
 
 			return render_state;
 		}
-
-		static VkFormat to_vk_format(Format format) {
-			switch (format) {
-				case Format::RGBA8_UNORM: return VK_FORMAT_R8G8B8A8_UNORM;
-				case Format::RGBA16_SFLOAT: return VK_FORMAT_R16G16B16A16_SFLOAT;
-			}
-			return VK_FORMAT_UNDEFINED;
-		}
-
-		static VkImageUsageFlags to_vk_image_usage(uint32_t usage) {
-			VkImageUsageFlags flags = 0;
-			if (usage & ImageUsage::STORAGE) flags |= VK_IMAGE_USAGE_STORAGE_BIT;
-			if (usage & ImageUsage::SAMPLED) flags |= VK_IMAGE_USAGE_SAMPLED_BIT;
-			if (usage & ImageUsage::TRANSFER_SRC) flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-			if (usage & ImageUsage::TRANSFER_DST) flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-			if (usage & ImageUsage::COLOR_TARGET) flags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-			return flags;
-		}
 	}
 
 	RenderContext renderer_create(RenderingAPI api)
@@ -189,16 +171,12 @@ namespace Nevarea {
 
 		switch (render_state->api) {
 			case RenderingAPI::VULKAN: {
-				VkExtent2D extent = { description.width, description.height };
-				Renderer::ImageHandle handle = Renderer::vulkan_create_image(render_state->vulkan.resource_manager, extent, to_vk_format(description.format), to_vk_image_usage(description.usage));
-
+				Renderer::ImageHandle handle = Renderer::vulkan_create_image(render_state->vulkan.resource_manager, description);
 				return { handle.index, handle.generation };
 			}
-
 			case RenderingAPI::NONE:
 				break;
 		}
-
 		return {};
 	}
 
@@ -282,17 +260,11 @@ namespace Nevarea {
 		}
 	}
 
-	Buffer renderer_create_buffer(RenderContext context, size_t size, const char* debug_name) {
+	Buffer renderer_create_buffer(RenderContext context, const BufferDescription& description) {
         RenderState* render_state = resolve(context);
 
         switch (render_state->api) {
             case RenderingAPI::VULKAN: {
-                Renderer::BufferDescription description{};
-                description.size = size;
-                description.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-                description.memory_usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-                description.name = debug_name;
-
                 Renderer::BufferHandle handle = Renderer::vulkan_create_buffer(render_state->vulkan.resource_manager, description);
                 return { handle.index, handle.generation };
             }

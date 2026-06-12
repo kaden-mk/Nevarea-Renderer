@@ -139,7 +139,7 @@ namespace Nevarea::Renderer {
 		bool present = context.present_target.index != UINT32_MAX;
 		bool had_compute = !context.compute_dispatches.empty();
 
-		if (present) {
+		/*if (present) {
 			AllocatedImage& target = vulkan_get_image(context.resource_manager, context.present_target);
 			transition_image(cmd, target.image,
 				VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
@@ -153,6 +153,49 @@ namespace Nevarea::Renderer {
 			vkCmdBindDescriptorSets(cmd, pipeline.bind_point, pipeline.layout, 0, 1, &context.resource_manager.descriptor_set, 0, nullptr);
 			vkCmdPushConstants(cmd, pipeline.layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(PushConstants), &dispatch.push);
 			vkCmdDispatch(cmd, dispatch.groups_x, dispatch.groups_y, dispatch.groups_z);
+		}
+		context.compute_dispatches.clear();*/
+
+		if (present) {
+			AllocatedImage& target = vulkan_get_image(context.resource_manager, context.present_target);
+			transition_image(cmd, target.image,
+				VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
+				VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0,
+				VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT);
+		}
+
+		for (size_t i = 0; i < context.compute_dispatches.size(); i++) {
+			const ComputeDispatch& dispatch = context.compute_dispatches[i];
+			const PipelineContext& pipeline = vulkan_pipeline_get(context, dispatch.pipeline);
+
+			uint32_t img = dispatch.push.image_index;
+			if (img != UINT32_MAX && img != context.present_target.index
+				&& img < context.resource_manager.image_pool.size()) {
+				transition_image(cmd, context.resource_manager.image_pool[img].image,
+					VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
+					VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0,
+					VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT);
+			}
+
+			vkCmdBindPipeline(cmd, pipeline.bind_point, pipeline.pipeline);
+			vkCmdBindDescriptorSets(cmd, pipeline.bind_point, pipeline.layout, 0, 1, &context.resource_manager.descriptor_set, 0, nullptr);
+			vkCmdPushConstants(cmd, pipeline.layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(PushConstants), &dispatch.push);
+			vkCmdDispatch(cmd, dispatch.groups_x, dispatch.groups_y, dispatch.groups_z);
+
+			if (i + 1 < context.compute_dispatches.size()) {
+				VkMemoryBarrier2 barrier{};
+				barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2;
+				barrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+				barrier.srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+				barrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+				barrier.dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT;
+
+				VkDependencyInfo dep{};
+				dep.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+				dep.memoryBarrierCount = 1;
+				dep.pMemoryBarriers = &barrier;
+				vkCmdPipelineBarrier2(cmd, &dep);
+			}
 		}
 		context.compute_dispatches.clear();
 
@@ -237,7 +280,8 @@ namespace Nevarea::Renderer {
 
 			vkCmdDraw(cmd, mesh.vertex_count, 1, 0, 0);
 		}
-
+		NEVAREA_ASSERT(context.draw_list.empty(), "RENDERER",
+						"submit_mesh + present_image in the same frame is unsupported - submitted meshes are dropped this frame.");
 		context.draw_list.clear();
 
 		end_frame_rendering(context.frame_sync, context.swapchain, context.device, context.surface, context.window, cmd);

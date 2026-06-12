@@ -65,6 +65,22 @@ namespace Nevarea {
         bool is_valid() const { return id != UINT32_MAX; }
     };
 
+   	namespace BufferUsage {
+		enum : uint32_t {
+			STORAGE = 1u << 0, UNIFORM = 1u << 1, INDEX = 1u << 2,
+			INDIRECT = 1u << 3, TRANSFER_SRC = 1u << 4, TRANSFER_DST = 1u << 5,
+		};
+	};
+
+	enum class MemoryLocation : uint32_t { GPU_ONLY, CPU_TO_GPU, GPU_TO_CPU };
+
+	struct BufferDescription {
+		size_t size = 0;
+		uint32_t usage = 0;
+		MemoryLocation memory = MemoryLocation::CPU_TO_GPU;
+		const char* debug_name = "nevarea_buffer";
+	};
+
 	struct RendererCapabilities {
 		bool memory_priority = false;
 		bool pageable_memory = false;
@@ -116,7 +132,7 @@ namespace Nevarea {
 	void renderer_dispatch_compute(RenderContext renderer, PipelineHandle pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, uint64_t buffer_address = 0, Image target_image = {});
 	void renderer_present_image(RenderContext renderer, Image handle);
 
-	Buffer renderer_create_buffer(RenderContext context, size_t size, const char* debug_name = "nevarea_buffer");
+	Buffer renderer_create_buffer(RenderContext context, const BufferDescription& description);
     void renderer_destroy_buffer(RenderContext context, Buffer handle);
     void renderer_update_buffer(RenderContext context, Buffer handle, const void* data, size_t size);
     uint64_t renderer_get_buffer_address(RenderContext context, Buffer handle);
