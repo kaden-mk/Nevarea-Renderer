@@ -147,4 +147,6 @@ namespace Nevarea {
 	NEVAREA_API void renderer_destroy_buffer(RenderContext context, Buffer handle);
 	NEVAREA_API void renderer_update_buffer(RenderContext context, Buffer handle, const void* data, size_t size);
 	NEVAREA_API uint64_t renderer_get_buffer_address(RenderContext context, Buffer handle);
+
+	NEVAREA_API bool renderer_device_lost(RenderContext renderer);
 }

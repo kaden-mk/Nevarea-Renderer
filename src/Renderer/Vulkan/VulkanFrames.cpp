@@ -6,6 +6,8 @@ namespace Nevarea::Renderer {
 		VkResult result = vkAcquireNextImageKHR(device.device, swapchain.swapchain, UINT64_MAX,
 			frame.image_available[frame.current_frame], VK_NULL_HANDLE, &swapchain.current_image_index);
 
+		if (result == VK_ERROR_DEVICE_LOST) { device.device_lost = true; return VK_NULL_HANDLE; }
+
 		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 			recreate_swapchain(swapchain, device, surface, window);
 			vulkan_frame_sync_ensure_present_semaphores(frame, device.device, static_cast<uint32_t>(swapchain.images.size()));
@@ -29,7 +31,9 @@ namespace Nevarea::Renderer {
 		wait_info.pSemaphores = &frame.timeline;
 		wait_info.pValues = &wait_value;
 
-		VK_ASSERT(vkWaitSemaphores(device.device, &wait_info, UINT64_MAX));
+		VkResult wait_result = vkWaitSemaphores(device.device, &wait_info, UINT64_MAX);
+		if (wait_result == VK_ERROR_DEVICE_LOST) { device.device_lost = true; return VK_NULL_HANDLE; }
+		VK_ASSERT(wait_result);
 
 		vulkan_resources_flush_deletors(frame.deletion_queues[frame.current_frame]);
 
@@ -101,7 +105,9 @@ namespace Nevarea::Renderer {
 		submit_info.commandBufferInfoCount = 1;
 		submit_info.pCommandBufferInfos = &cmd_info;
 
-		VK_ASSERT(vkQueueSubmit2(device.graphics_queue, 1, &submit_info, VK_NULL_HANDLE));
+		VkResult submit_result = vkQueueSubmit2(device.graphics_queue, 1, &submit_info, VK_NULL_HANDLE);
+		if (submit_result == VK_ERROR_DEVICE_LOST) { device.device_lost = true; return; }
+		VK_ASSERT(submit_result);
 
 		frame.frame_timeline_target[frame.current_frame] = signal_value;
 
@@ -116,6 +122,7 @@ namespace Nevarea::Renderer {
 		present_info.pImageIndices = &swapchain.current_image_index;
 
 		VkResult result = vkQueuePresentKHR(device.present_queue, &present_info);
+		if (result == VK_ERROR_DEVICE_LOST) { device.device_lost = true; return; }
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 			recreate_swapchain(swapchain, device, surface, window);
 			vulkan_frame_sync_ensure_present_semaphores(frame, device.device, static_cast<uint32_t>(swapchain.images.size()));

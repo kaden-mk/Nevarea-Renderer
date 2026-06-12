@@ -140,6 +140,8 @@ namespace Nevarea::Renderer {
 	}
 
 	void vulkan_context_draw(VulkanContext& context) {
+	    if (context.device.device_lost) return;
+
 		VkCommandBuffer cmd = begin_frame(context.frame_sync, context.swapchain, context.device, context.surface, context.window);
 		if (cmd == VK_NULL_HANDLE) return;
 

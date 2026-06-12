@@ -16,6 +16,9 @@ namespace Nevarea::Renderer {
 		uint32_t graphics_family_index;
 		uint32_t compute_family_index;
 		uint32_t transfer_family_index;
+		uint32_t present_family_index;
+
+		bool device_lost = false;
 
 		RendererCapabilities capabilities;
 		std::vector<const char*> enabled_optional_extensions;

@@ -385,4 +385,15 @@ namespace Nevarea {
 
         return 0;
     }
+
+   	bool renderer_device_lost(RenderContext context) {
+		RenderState* render_state = resolve(context);
+
+		switch (render_state->api) {
+			case RenderingAPI::VULKAN: return render_state->vulkan.device.device_lost;
+			case RenderingAPI::NONE: break;
+		}
+
+		return false;
+	}
 }

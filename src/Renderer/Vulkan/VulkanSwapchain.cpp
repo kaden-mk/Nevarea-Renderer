@@ -120,7 +120,16 @@ namespace Nevarea::Renderer {
 		create_info.imageExtent = swapchain_extent;
 		create_info.imageArrayLayers = 1;
 		create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-		create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE; // TODO: add a check to switch between concurrent and exclusive
+
+		uint32_t sharing_families[] = { device.graphics_family_index, device.present_family_index };
+		if (device.graphics_family_index != device.present_family_index) {
+			create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+			create_info.queueFamilyIndexCount = 2;
+			create_info.pQueueFamilyIndices = sharing_families;
+		} else {
+			create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		}
+
 		create_info.preTransform = surface.capabilities.currentTransform;
 		create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 		create_info.presentMode = swapchain_present_mode;
@@ -152,8 +161,13 @@ namespace Nevarea::Renderer {
 
 		swapchain.image_views.clear();
 
+		VkFormat old_format = swapchain.image_format;
 		VkSwapchainKHR old_handle = swapchain.swapchain;
 		vulkan_swapchain_init(swapchain, device, surface, window, old_handle);
+
+		if (swapchain.image_format != old_format)
+			std::cerr << "[NEVAREA]: swapchain surface format changed on recreate - graphics pipelines built for the old format are now invalid and must be recreated." << std::endl;
+
 		swapchain.resized = true;
 	}
 

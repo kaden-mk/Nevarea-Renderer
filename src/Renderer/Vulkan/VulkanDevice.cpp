@@ -411,6 +411,7 @@ namespace Nevarea::Renderer {
 		device_context->graphics_family_index = indices.graphics_family.value();
 		device_context->compute_family_index = indices.compute_family.value();
 		device_context->transfer_family_index = indices.transfer_family.value();
+		device_context->present_family_index = indices.present_family.value();
 
 		vkGetDeviceQueue(device_context->device, indices.graphics_family.value(), 0, &device_context->graphics_queue);
 		vkGetDeviceQueue(device_context->device, indices.present_family.value(), 0, &device_context->present_queue);
