@@ -2,6 +2,7 @@
 #include "RenderState.hpp"
 #include "Renderer/Vulkan/VulkanContext.hpp"
 #include "Renderer/Vulkan/VulkanFrames.hpp"
+#include "Renderer/Vulkan/VulkanResourceManager.hpp"
 #include "lib/WindowSystem.hpp"
 
 namespace Nevarea {
@@ -277,6 +278,26 @@ namespace Nevarea {
 			case RenderingAPI::NONE:
 				break;
 		}
+	}
+
+	Sampler renderer_create_sampler(RenderContext context, const SamplerDescription& description) {
+    	RenderState* render_state = resolve(context);
+
+    	switch (render_state->api) {
+            case RenderingAPI::VULKAN: return Renderer::vulkan_create_sampler(render_state->vulkan.resource_manager, description);
+            case RenderingAPI::NONE: break;
+    	}
+
+        return {};
+	}
+
+	void renderer_destroy_sampler(RenderContext context, Sampler sampler) {
+	    RenderState* render_state = resolve(context);
+
+		switch (render_state->api) {
+		    case RenderingAPI::VULKAN: Renderer::vulkan_destroy_sampler(render_state->vulkan.resource_manager, sampler, render_state->vulkan.frame_sync);
+			case RenderingAPI::NONE: break;
+		};
 	}
 
 	void renderer_submit_mesh(RenderContext context, Mesh mesh, PipelineHandle pipeline) {

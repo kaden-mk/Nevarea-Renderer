@@ -90,6 +90,35 @@ namespace Nevarea {
 		float priority = 0.5f;
 	};
 
+	enum class Filter : uint32_t { NEAREST, LINEAR };
+	enum class MipmapMode : uint32_t { NEAREST, LINEAR };
+	enum class AddressMode : uint32_t { REPEAT, MIRRORED_REPEAT, CLAMP_EDGE, CLAMP_BORDER };
+	enum class CompareOp : uint32_t { NONE, LESS, LESS_EQUAL, GREATER, GREATER_EQUAL, EQUAL, ALWAYS };
+	enum class BorderColor : uint32_t { TRANSPARENT_BLACK, OPAQUE_BLACK, OPAQUE_WHITE };
+
+	struct SamplerDescription {
+        Filter min_filter = Filter::LINEAR;
+        Filter mag_filter = Filter::LINEAR;
+        MipmapMode  mipmap_mode = MipmapMode::LINEAR;
+        AddressMode address_u = AddressMode::REPEAT;
+        AddressMode address_v = AddressMode::REPEAT;
+        AddressMode address_w = AddressMode::REPEAT;
+
+        float mip_lod_bias = 0.0f;
+        float min_lod = 0.0f;
+        float max_lod = 1000.0f; // ~VK_LOD_CLAMP_NONE meaning that large lods wont get clamped
+        float max_anisotropy = 1.0f;
+
+        CompareOp compare_op = CompareOp::NONE;
+        BorderColor border_color = BorderColor::OPAQUE_BLACK;
+	};
+
+	struct Sampler {
+	    uint32_t id = UINT32_MAX;
+		uint32_t generation = 0;
+		bool is_valid() { return id != UINT32_MAX; };
+	};
+
 	struct RendererCapabilities {
 		bool memory_priority = false;
 		bool pageable_memory = false;
@@ -142,6 +171,9 @@ namespace Nevarea {
 
 	NEVAREA_API Mesh renderer_create_mesh(RenderContext renderer, Vertex* vertices, uint32_t count);
 	NEVAREA_API void renderer_destroy_mesh(RenderContext renderer, Mesh handle);
+
+	NEVAREA_API Sampler renderer_create_sampler(RenderContext renderer, const SamplerDescription& description);
+	NEVAREA_API void renderer_destroy_sampler(RenderContext renderer, Sampler sampler);
 
 	NEVAREA_API void renderer_submit_mesh(RenderContext renderer, Mesh mesh, PipelineHandle pipeline);
 	NEVAREA_API void renderer_dispatch_compute(RenderContext renderer, PipelineHandle pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, uint64_t buffer_address = 0, Image target_image = {});

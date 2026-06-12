@@ -10,6 +10,7 @@
 namespace Nevarea::Renderer {
 	#define NEVAREA_BUFFER_IMAGE_SIZE 1000
 	#define NEVAREA_BUFFER_STORAGE_SIZE 1000
+	#define NEVAREA_SAMPLER_SIZE 64
 
 	struct ImageHandle {
 		uint32_t index = UINT32_MAX;
@@ -51,6 +52,10 @@ namespace Nevarea::Renderer {
 		std::vector<uint32_t> image_generation_pool;
 		std::vector<uint32_t> image_free_list;
 
+		std::vector<VkSampler> sampler_pool;
+		std::vector<uint32_t>  sampler_generation_pool;
+        std::vector<uint32_t>  sampler_free_list;
+
 		VmaAllocator allocator;
 
 		VkDescriptorSet descriptor_set;
@@ -77,4 +82,7 @@ namespace Nevarea::Renderer {
 
 	Mesh vulkan_create_mesh(ResourceManager& manager, Vertex* vertices, uint32_t count);
 	void vulkan_destroy_mesh(ResourceManager& manager, Mesh handle, FrameContext& frame);
+
+	Sampler vulkan_create_sampler(ResourceManager& manager, const SamplerDescription& description);
+	void vulkan_destroy_sampler(ResourceManager& manager, Sampler sampler, FrameContext& frame);
 }

@@ -43,18 +43,72 @@ namespace Nevarea::Renderer {
 		return flags;
 	}
 
+	static VkSamplerAddressMode to_vk_address_mode(Nevarea::AddressMode mode) {
+	    switch (mode) {
+			case AddressMode::REPEAT: return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+			case AddressMode::MIRRORED_REPEAT: return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+			case AddressMode::CLAMP_EDGE: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+			case AddressMode::CLAMP_BORDER: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+		}
+
+		return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	}
+
+	static VkFilter to_vk_filter(Nevarea::Filter filter) {
+	    switch (filter) {
+			case Filter::NEAREST: return VK_FILTER_NEAREST;
+			case Filter::LINEAR: return VK_FILTER_LINEAR;
+		}
+
+		return VK_FILTER_LINEAR;
+	}
+
+	static VkSamplerMipmapMode to_vk_mipmap_mode(Nevarea::MipmapMode mode) {
+	    switch (mode) {
+			case MipmapMode::LINEAR: return VK_SAMPLER_MIPMAP_MODE_LINEAR;
+			case MipmapMode::NEAREST: return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+		}
+
+		return VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	}
+
+	static VkCompareOp to_vk_compare_op(Nevarea::CompareOp op) {
+		switch (op) {
+			case CompareOp::NONE: return VK_COMPARE_OP_ALWAYS; // unused: compareEnable is false
+			case CompareOp::LESS: return VK_COMPARE_OP_LESS;
+			case CompareOp::LESS_EQUAL: return VK_COMPARE_OP_LESS_OR_EQUAL;
+			case CompareOp::GREATER: return VK_COMPARE_OP_GREATER;
+			case CompareOp::GREATER_EQUAL: return VK_COMPARE_OP_GREATER_OR_EQUAL;
+			case CompareOp::EQUAL: return VK_COMPARE_OP_EQUAL;
+			case CompareOp::ALWAYS: return VK_COMPARE_OP_ALWAYS;
+		}
+
+		return VK_COMPARE_OP_ALWAYS;
+	}
+
+	static VkBorderColor to_vk_border_color(Nevarea::BorderColor color) {
+		switch (color) {
+			case BorderColor::TRANSPARENT_BLACK: return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+			case BorderColor::OPAQUE_BLACK: return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+			case BorderColor::OPAQUE_WHITE: return VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+		}
+
+		return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+	}
+
 	void vulkan_create_descriptor_pool(ResourceManager& manager) {
 		VkDescriptorPoolSize pool_sizes[] = {
-			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, NEVAREA_BUFFER_IMAGE_SIZE },
+			{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, NEVAREA_BUFFER_IMAGE_SIZE },
 			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, NEVAREA_BUFFER_STORAGE_SIZE },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, NEVAREA_BUFFER_IMAGE_SIZE }
+			{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, NEVAREA_BUFFER_IMAGE_SIZE },
+			{ VK_DESCRIPTOR_TYPE_SAMPLER, NEVAREA_SAMPLER_SIZE }
 		};
 
 		VkDescriptorPoolCreateInfo create_info{};
 		create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		create_info.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
 		create_info.maxSets = 1;
-		create_info.poolSizeCount = 3;
+		create_info.poolSizeCount = 4;
 		create_info.pPoolSizes = pool_sizes;
 
 		VK_ASSERT(vkCreateDescriptorPool(manager.device, &create_info, nullptr, &manager.descriptor_pool));
@@ -62,9 +116,9 @@ namespace Nevarea::Renderer {
 	}
 
 	void vulkan_create_descriptor_layout(ResourceManager& manager) {
-		VkDescriptorSetLayoutBinding bindings[2]{};
+		VkDescriptorSetLayoutBinding bindings[3]{};
 		bindings[0].binding = 0;
-		bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 		bindings[0].descriptorCount = NEVAREA_BUFFER_IMAGE_SIZE;
 		bindings[0].stageFlags = VK_SHADER_STAGE_ALL;
 
@@ -73,21 +127,27 @@ namespace Nevarea::Renderer {
 		bindings[1].descriptorCount = NEVAREA_BUFFER_IMAGE_SIZE;
 		bindings[1].stageFlags = VK_SHADER_STAGE_ALL;
 
-		VkDescriptorBindingFlags flags[2] = {
+		bindings[2].binding = 2;
+		bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+		bindings[2].descriptorCount = NEVAREA_SAMPLER_SIZE;
+		bindings[2].stageFlags = VK_SHADER_STAGE_ALL;
+
+		VkDescriptorBindingFlags flags[3] = {
 			VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
-			VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT
+			VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
+			VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
 		};
 
 		VkDescriptorSetLayoutBindingFlagsCreateInfo layout_flags{};
 		layout_flags.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
-		layout_flags.bindingCount = 2;
+		layout_flags.bindingCount = 3;
 		layout_flags.pBindingFlags = flags;
 
 		VkDescriptorSetLayoutCreateInfo layout_info{};
 		layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 		layout_info.pNext = &layout_flags;
 		layout_info.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
-		layout_info.bindingCount = 2;
+		layout_info.bindingCount = 3;
 		layout_info.pBindings = bindings;
 
 		VK_ASSERT(vkCreateDescriptorSetLayout(manager.device, &layout_info, nullptr, &manager.descriptor_layout));
@@ -152,6 +212,17 @@ namespace Nevarea::Renderer {
 		manager.image_pool.clear();
 		manager.image_generation_pool.clear();
 		manager.image_free_list.clear();
+
+		for (size_t i = 0; i < manager.sampler_pool.size(); ++i) {
+		    if (manager.sampler_pool[i] != VK_NULL_HANDLE) {
+				std::cerr << "[NEVAREA]: [RESOURCE MANAGER] Leaked sampler at slot " << i << std::endl;
+				vkDestroySampler(manager.device, manager.sampler_pool[i], nullptr);
+			}
+		}
+
+		manager.sampler_pool.clear();
+		manager.sampler_generation_pool.clear();
+		manager.sampler_free_list.clear();
 
 		vkDestroyDescriptorSetLayout(manager.device, manager.descriptor_layout, nullptr);
 		vkDestroyDescriptorPool(manager.device, manager.descriptor_pool, nullptr);
@@ -304,6 +375,22 @@ namespace Nevarea::Renderer {
 			vkUpdateDescriptorSets(manager.device, 1, &write, 0, nullptr);
 		}
 
+		if (usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
+            VkDescriptorImageInfo desc_image{};
+            desc_image.imageView = img.view;
+            desc_image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+            VkWriteDescriptorSet write{ };
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.dstSet = manager.descriptor_set;
+            write.dstBinding = 0;
+            write.dstArrayElement = index;
+            write.descriptorCount = 1;
+            write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+            write.pImageInfo = &desc_image;
+            vkUpdateDescriptorSets(manager.device, 1, &write, 0, nullptr);
+        }
+
 		return { index, manager.image_generation_pool[index] };
 	}
 
@@ -395,5 +482,86 @@ namespace Nevarea::Renderer {
 
 		manager.mesh_generation_pool[handle.id]++;
 		manager.mesh_free_list.push_back(handle.id);
+	}
+
+	Sampler vulkan_create_sampler(ResourceManager& manager, const SamplerDescription& description) {
+	    VkSamplerCreateInfo create_info{};
+		create_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+		create_info.pNext = nullptr;
+		create_info.flags = 0;
+
+		create_info.magFilter = to_vk_filter(description.mag_filter);
+		create_info.minFilter = to_vk_filter(description.min_filter);
+
+		create_info.addressModeU = to_vk_address_mode(description.address_u);
+		create_info.addressModeV = to_vk_address_mode(description.address_v);
+		create_info.addressModeW = to_vk_address_mode(description.address_w);
+
+		create_info.anisotropyEnable = (description.max_anisotropy > 1);
+		create_info.maxAnisotropy = description.max_anisotropy;
+
+		create_info.borderColor = to_vk_border_color(description.border_color);
+
+		create_info.unnormalizedCoordinates = VK_FALSE;
+
+		create_info.compareEnable = (description.compare_op != CompareOp::NONE);
+		create_info.compareOp = to_vk_compare_op(description.compare_op);
+
+		create_info.mipmapMode = to_vk_mipmap_mode(description.mipmap_mode);
+		create_info.mipLodBias = description.mip_lod_bias;
+		create_info.minLod = description.min_lod;
+		create_info.maxLod = description.max_lod >= 1000.0f ? VK_LOD_CLAMP_NONE : description.max_lod;
+
+		VkSampler sampler;
+
+		VK_ASSERT(vkCreateSampler(manager.device, &create_info, nullptr, &sampler));
+
+		uint32_t index;
+		if (!manager.sampler_free_list.empty()) {
+			index = manager.sampler_free_list.back();
+			manager.sampler_free_list.pop_back();
+			manager.sampler_pool[index] = sampler;
+		}
+		else {
+			index = static_cast<uint32_t>(manager.sampler_pool.size());
+			manager.sampler_pool.push_back(sampler);
+			manager.sampler_generation_pool.push_back(0);
+		}
+
+		VkDescriptorImageInfo image_info{};
+		image_info.sampler = sampler;
+
+		VkWriteDescriptorSet write{};
+		write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		write.dstSet = manager.descriptor_set;
+		write.dstBinding = 2;
+		write.dstArrayElement = index;
+		write.descriptorCount = 1;
+		write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+		write.pImageInfo = &image_info;
+
+		vkUpdateDescriptorSets(manager.device, 1, &write, 0, nullptr);
+
+		return { index, manager.sampler_generation_pool[index] };
+	}
+
+	void vulkan_destroy_sampler(ResourceManager& manager, Sampler sampler, FrameContext& frame) {
+		NEVAREA_ASSERT(sampler.id < manager.sampler_pool.size(),
+			"RESOURCE MANAGER", "Sampler handle index out of range!");
+
+		NEVAREA_ASSERT(sampler.generation == manager.sampler_generation_pool[sampler.id],
+			"RESOURCE MANAGER", "Stale Sampler handle (generation mismatch)!");
+
+    	VkDevice device = manager.device;
+
+        VkSampler raw_sampler = manager.sampler_pool[sampler.id];
+
+        vulkan_resources_push_deletor(frame.deletion_queues[frame.current_frame], [device, raw_sampler]() {
+            vkDestroySampler(device, raw_sampler, nullptr);
+        });
+
+       	manager.sampler_pool[sampler.id] = VK_NULL_HANDLE;
+       	manager.sampler_generation_pool[sampler.id]++;
+       	manager.sampler_free_list.push_back(sampler.id);
 	}
 }
