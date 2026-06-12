@@ -1,6 +1,7 @@
 #include "lib/Rendering.hpp"
 #include "RenderState.hpp"
 #include "Renderer/Vulkan/VulkanContext.hpp"
+#include "Renderer/Vulkan/VulkanFrames.hpp"
 #include "lib/WindowSystem.hpp"
 
 namespace Nevarea {
@@ -379,7 +380,7 @@ namespace Nevarea {
             case RenderingAPI::VULKAN:
                 return Renderer::vulkan_get_buffer_address(render_state->vulkan.resource_manager, { handle.id, handle.generation });
 
-                case RenderingAPI::NONE:
+            case RenderingAPI::NONE:
                 break;
         }
 
@@ -395,5 +396,31 @@ namespace Nevarea {
 		}
 
 		return false;
+	}
+
+	uint64_t renderer_last_present_id(RenderContext context) {
+        RenderState* render_state = resolve(context);
+
+        switch (render_state->api) {
+            case Nevarea::RenderingAPI::VULKAN: return render_state->vulkan.frame_sync.present_id;
+            case Nevarea::RenderingAPI::NONE: break;
+        }
+
+        return 0;
+	}
+
+	bool renderer_wait_for_present(RenderContext context, uint64_t present_id, uint64_t timeout_ns) {
+        RenderState* render_state = resolve(context);
+
+        switch (render_state->api) {
+            case Nevarea::RenderingAPI::VULKAN: {
+                auto& vk = render_state->vulkan;
+
+                return Renderer::vulkan_wait_for_present(vk.device, vk.swapchain, present_id, timeout_ns);
+            }
+            case Nevarea::RenderingAPI::NONE: break;
+        }
+
+        return false;
 	}
 }

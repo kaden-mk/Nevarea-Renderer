@@ -34,6 +34,7 @@ namespace Nevarea::Renderer {
         uint64_t frame_timeline_target[MAX_FRAMES_IN_FLIGHT];
 
         uint32_t current_frame;
+        uint64_t present_id = 0;
 
         VkCommandPool command_pool;
         std::vector<VkCommandBuffer> command_buffers;

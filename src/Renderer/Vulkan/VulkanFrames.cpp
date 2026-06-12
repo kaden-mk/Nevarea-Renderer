@@ -121,6 +121,15 @@ namespace Nevarea::Renderer {
 		present_info.pSwapchains = swapchains;
 		present_info.pImageIndices = &swapchain.current_image_index;
 
+		uint64_t id = 0;
+        VkPresentIdKHR present_id_info{ VK_STRUCTURE_TYPE_PRESENT_ID_KHR, nullptr, 0, nullptr };
+        if (device.capabilities.present_id) {
+            id = ++frame.present_id;
+            present_id_info.swapchainCount = 1;
+            present_id_info.pPresentIds = &id;
+            present_info.pNext = &present_id_info;
+        }
+
 		VkResult result = vkQueuePresentKHR(device.present_queue, &present_info);
 		if (result == VK_ERROR_DEVICE_LOST) { device.device_lost = true; return; }
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
@@ -214,5 +223,16 @@ namespace Nevarea::Renderer {
 		VK_ASSERT(vkEndCommandBuffer(cmd));
 		handle_queues(frame, swapchain, device, surface, window, cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT);
 		frame.current_frame = (frame.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
+	}
+
+	bool vulkan_wait_for_present(DeviceContext &device, SwapchainContext &swapchain, uint64_t present_id, uint64_t timeout_ns) {
+        if (!device.capabilities.present_wait || !device.wait_for_present) return true;
+
+        VkResult result = device.wait_for_present(device.device, swapchain.swapchain, present_id, timeout_ns);
+		if (result == VK_TIMEOUT) return false;
+		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) return true;
+		if (result < 0) return false;
+
+		return true;
 	}
 }

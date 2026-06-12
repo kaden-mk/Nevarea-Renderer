@@ -96,6 +96,8 @@ namespace Nevarea {
 
 		bool present_id = false;
 		bool present_wait = false;
+		bool present_id2 = false;
+		bool present_wait2 = false;
 		bool swapchain_maintenance1 = false;
 
 		bool descriptor_buffer = false;
@@ -151,4 +153,7 @@ namespace Nevarea {
 	NEVAREA_API uint64_t renderer_get_buffer_address(RenderContext context, Buffer handle);
 
 	NEVAREA_API bool renderer_device_lost(RenderContext renderer);
+
+	NEVAREA_API uint64_t renderer_last_present_id(RenderContext renderer);
+	NEVAREA_API bool renderer_wait_for_present(RenderContext renderer, uint64_t present_id, uint64_t timeout_ns);
 }

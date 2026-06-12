@@ -147,6 +147,8 @@ namespace Nevarea::Renderer {
 		device_context.capabilities.pageable_memory = has(VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME);
 		device_context.capabilities.present_id = has(VK_KHR_PRESENT_ID_EXTENSION_NAME);
 		device_context.capabilities.present_wait = has(VK_KHR_PRESENT_WAIT_EXTENSION_NAME);
+		device_context.capabilities.present_id2  = has(VK_KHR_PRESENT_ID_2_EXTENSION_NAME);
+		device_context.capabilities.present_wait2 = has(VK_KHR_PRESENT_WAIT_2_EXTENSION_NAME);
 		device_context.capabilities.swapchain_maintenance1 = has(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);
 		device_context.capabilities.descriptor_buffer = has(VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME);
 		device_context.capabilities.descriptor_heap = has(VK_EXT_DESCRIPTOR_HEAP_EXTENSION_NAME);
@@ -407,6 +409,9 @@ namespace Nevarea::Renderer {
 		create_info.ppEnabledLayerNames = nullptr;
 
 		VK_ASSERT(vkCreateDevice(device_context->physical_device, &create_info, nullptr, &device_context->device));
+
+		if (device_context->capabilities.present_wait)
+            device_context->wait_for_present = reinterpret_cast<PFN_vkWaitForPresentKHR>(vkGetDeviceProcAddr(device_context->device, "vkWaitForPresentKHR"));
 
 		device_context->graphics_family_index = indices.graphics_family.value();
 		device_context->compute_family_index = indices.compute_family.value();

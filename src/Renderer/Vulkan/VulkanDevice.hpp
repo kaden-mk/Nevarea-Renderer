@@ -20,6 +20,8 @@ namespace Nevarea::Renderer {
 
 		bool device_lost = false;
 
+		PFN_vkWaitForPresentKHR wait_for_present = nullptr;
+
 		RendererCapabilities capabilities;
 		std::vector<const char*> enabled_optional_extensions;
 	};
