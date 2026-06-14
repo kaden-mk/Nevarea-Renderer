@@ -301,12 +301,12 @@ namespace Nevarea {
 		};
 	}
 
-	void renderer_submit_mesh(RenderContext context, Mesh mesh, PipelineHandle pipeline) {
+	void renderer_submit_mesh(RenderContext context, Mesh mesh, PipelineHandle pipeline, const void* push, size_t push_size) {
 		RenderState* render_state = resolve(context);
 
 		switch (render_state->api) {
 			case RenderingAPI::VULKAN:
-				Renderer::vulkan_submit_mesh(render_state->vulkan, mesh, pipeline);
+				Renderer::vulkan_submit_mesh(render_state->vulkan, mesh, pipeline, push, push_size);
 				break;
 
 			case RenderingAPI::NONE:
@@ -314,12 +314,12 @@ namespace Nevarea {
 		}
 	}
 
-	void renderer_submit_mesh_range(RenderContext context, Mesh mesh, uint32_t first_index, uint32_t index_count, PipelineHandle pipeline) {
+	void renderer_submit_mesh_range(RenderContext context, Mesh mesh, uint32_t first_index, uint32_t index_count, PipelineHandle pipeline, const void* push, size_t push_size) {
     	RenderState* render_state = resolve(context);
 
     	switch (render_state->api) {
     		case RenderingAPI::VULKAN:
-    			Renderer::vulkan_submit_mesh_range(render_state->vulkan, mesh, first_index, index_count, pipeline);
+    			Renderer::vulkan_submit_mesh_range(render_state->vulkan, mesh, first_index, index_count, pipeline, push, push_size);
     			break;
 
     		case RenderingAPI::NONE:

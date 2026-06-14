@@ -200,8 +200,8 @@ namespace Nevarea {
 	NEVAREA_API Sampler renderer_create_sampler(RenderContext renderer, const SamplerDescription& description);
 	NEVAREA_API void renderer_destroy_sampler(RenderContext renderer, Sampler sampler);
 
-	NEVAREA_API void renderer_submit_mesh(RenderContext renderer, Mesh mesh, PipelineHandle pipeline);
-	NEVAREA_API void renderer_submit_mesh_range(RenderContext renderer, Mesh mesh, uint32_t first_index, uint32_t index_count, PipelineHandle pipeline);
+	NEVAREA_API void renderer_submit_mesh(RenderContext renderer, Mesh mesh, PipelineHandle pipeline, const void* push = nullptr, size_t push_size = 0);
+	NEVAREA_API void renderer_submit_mesh_range(RenderContext renderer, Mesh mesh, uint32_t first_index, uint32_t index_count, PipelineHandle pipeline, const void* push = nullptr, size_t push_size = 0);
 	NEVAREA_API void renderer_dispatch_compute(RenderContext renderer, PipelineHandle pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, const void* push, size_t size, Image storage_target);
 	NEVAREA_API void renderer_present_image(RenderContext renderer, Image handle);
 	NEVAREA_API void renderer_upload_image(RenderContext renderer, Image handle, const void* pixels, size_t size);

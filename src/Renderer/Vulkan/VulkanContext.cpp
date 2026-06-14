@@ -264,12 +264,17 @@ namespace Nevarea::Renderer {
 			for (const DrawItem& item : bucket.items) {
                 MeshData& mesh = context.resource_manager.mesh_pool[item.mesh.id];
 
-                MeshPush push{ mesh.vertex_address };
-                vkCmdPushConstants(cmd, pipeline.layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPush), &push);
+                uint8_t push[NEVAREA_MAX_PUSH_CONSTANTS_SIZE];
+                if (item.push_size) memcpy(push, item.push_data, item.push_size);
+                memcpy(push, &mesh.vertex_address, sizeof(uint64_t));
+
+                vkCmdPushConstants(cmd, pipeline.layout,
+                     VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                     0, item.push_size, push);
 
                 if (mesh.index_buffer.is_valid()) {
-                    VkBuffer ib = vulkan_get_buffer(context.resource_manager, mesh.index_buffer);
-                    vkCmdBindIndexBuffer(cmd, ib, 0, VK_INDEX_TYPE_UINT32);
+                    VkBuffer index_buffer = vulkan_get_buffer(context.resource_manager, mesh.index_buffer);
+                    vkCmdBindIndexBuffer(cmd, index_buffer, 0, VK_INDEX_TYPE_UINT32);
                     vkCmdDrawIndexed(cmd, item.index_count, 1, item.first_index, item.vertex_offset, 0);
                 } else {
                     vkCmdDraw(cmd, mesh.vertex_count, 1, 0, 0);
@@ -314,7 +319,7 @@ namespace Nevarea::Renderer {
         return bucket;
     }
 
-	void vulkan_submit_mesh(VulkanContext& context, Mesh mesh, PipelineHandle pipeline) {
+	void vulkan_submit_mesh(VulkanContext& context, Mesh mesh, PipelineHandle pipeline, const void* push, size_t push_size) {
 		NEVAREA_ASSERT(mesh.id < context.resource_manager.mesh_pool.size(),
 			"RESOURCE MANAGER", "Mesh handle index out of range!");
 
@@ -322,20 +327,27 @@ namespace Nevarea::Renderer {
 			"RESOURCE MANAGER", "Stale Mesh handle (generation mismatch)!");
 
 		MeshData& mesh_data = context.resource_manager.mesh_pool[mesh.id];
-
-		DrawBucket& bucket = get_bucket(context, pipeline);
-		bucket.items.push_back({ mesh, 0, mesh_data.index_count, 0 });
+		DrawItem item{ mesh, 0, mesh_data.index_count, 0, {}, (uint32_t)(push_size ? push_size : sizeof(uint64_t)) };
+		if (push && push_size) {
+            NEVAREA_ASSERT(push_size <= NEVAREA_MAX_PUSH_CONSTANTS_SIZE, "RENDERER", "push data too large");
+            memcpy(item.push_data, push, push_size);
+        }
+        get_bucket(context, pipeline).items.push_back(item);
 	}
 
-	void vulkan_submit_mesh_range(VulkanContext& context, Mesh mesh, uint32_t first_index, uint32_t index_count, PipelineHandle pipeline) {
+	void vulkan_submit_mesh_range(VulkanContext& context, Mesh mesh, uint32_t first_index, uint32_t index_count, PipelineHandle pipeline, const void* push, size_t push_size) {
     	NEVAREA_ASSERT(mesh.id < context.resource_manager.mesh_pool.size(),
     		"RESOURCE MANAGER", "Mesh handle index out of range!");
 
     	NEVAREA_ASSERT(mesh.generation == context.resource_manager.mesh_generation_pool[mesh.id],
     		"RESOURCE MANAGER", "Stale Mesh handle (generation mismatch)!");
 
-	    DrawBucket& bucket = get_bucket(context, pipeline);
-		bucket.items.push_back({ mesh, first_index, index_count, 0 });
+   		DrawItem item{ mesh, first_index, index_count, 0, {}, (uint32_t)(push_size ? push_size : sizeof(uint64_t)) };
+        if (push && push_size) {
+            NEVAREA_ASSERT(push_size <= NEVAREA_MAX_PUSH_CONSTANTS_SIZE, "RENDERER", "push data too large");
+            memcpy(item.push_data, push, push_size);
+        }
+        get_bucket(context, pipeline).items.push_back(item);
 	}
 
 	PipelineHandle vulkan_pipeline_add(VulkanContext &context, const PipelineContext &pipeline) {
