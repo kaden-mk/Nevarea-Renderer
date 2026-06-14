@@ -13,9 +13,16 @@
 namespace Nevarea::Renderer {
     struct MeshPush { uint64_t vertex_buffer_address; }; // temporary for now
 
+    struct DrawItem {
+        Mesh mesh;
+        uint32_t first_index;
+        uint32_t index_count;
+        int32_t vertex_offset;
+    };
+
 	struct DrawBucket {
 		PipelineHandle pipeline;
-		std::vector<Mesh> meshes;
+		std::vector<DrawItem> items;
 	};
 
 	struct ComputeDispatch {
@@ -53,6 +60,7 @@ namespace Nevarea::Renderer {
 	void vulkan_context_destroy(VulkanContext& context);
 
 	void vulkan_submit_mesh(VulkanContext& context, Mesh mesh, PipelineHandle pipeline);
+	void vulkan_submit_mesh_range(VulkanContext& context, Mesh mesh, uint32_t first_index, uint32_t index_count, PipelineHandle pipeline);
 
 	PipelineHandle vulkan_pipeline_add(VulkanContext& context, const PipelineContext& pipeline);
 	PipelineContext& vulkan_pipeline_get(VulkanContext& context, PipelineHandle handle);

@@ -314,6 +314,19 @@ namespace Nevarea {
 		}
 	}
 
+	void renderer_submit_mesh_range(RenderContext context, Mesh mesh, uint32_t first_index, uint32_t index_count, PipelineHandle pipeline) {
+    	RenderState* render_state = resolve(context);
+
+    	switch (render_state->api) {
+    		case RenderingAPI::VULKAN:
+    			Renderer::vulkan_submit_mesh_range(render_state->vulkan, mesh, first_index, index_count, pipeline);
+    			break;
+
+    		case RenderingAPI::NONE:
+    			break;
+    	}
+	}
+
 	void renderer_dispatch_compute(RenderContext context, PipelineHandle pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, const void* push, size_t size, Image storage_target) {
 		RenderState* render_state = resolve(context);
 
