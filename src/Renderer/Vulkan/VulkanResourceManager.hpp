@@ -25,6 +25,7 @@ namespace Nevarea::Renderer {
 		VkExtent2D extent = {};
 		VkFormat format = VK_FORMAT_UNDEFINED;
 		VkImageLayout current_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+		VkImageUsageFlags usage;
 	};
 
 	struct BufferHandle {
@@ -62,11 +63,18 @@ namespace Nevarea::Renderer {
 		VkDescriptorSetLayout descriptor_layout;
 		VkDescriptorPool descriptor_pool;
 
+		VkCommandPool upload_pool;
+		VkCommandBuffer upload_cmd;
+		VkFence upload_fence;
+		VkQueue upload_queue;
+
 		VkDevice device;
 	};
 
-	void vulkan_resources_init(ResourceManager& manager, VmaAllocator allocator, VkDevice device);
+	void vulkan_resources_init(ResourceManager& manager, VmaAllocator allocator, VkDevice device, VkQueue graphics_queue, uint32_t graphics_family_index);
 	void vulkan_resources_destroy(ResourceManager& manager);
+
+	void vulkan_immediate_submit(ResourceManager& manager, std::function<void(VkCommandBuffer)>&& record);
 
 	void vulkan_resources_push_deletor(DeletionQueue& deletion_queue, std::function<void()>&& fn);
 	void vulkan_resources_flush_deletors(DeletionQueue& deletion_queue);
@@ -78,6 +86,7 @@ namespace Nevarea::Renderer {
 
 	ImageHandle vulkan_create_image(ResourceManager& manager, const ImageDescription& description);
 	AllocatedImage& vulkan_get_image(ResourceManager& manager, ImageHandle handle);
+	void vulkan_upload_image(ResourceManager& manager, ImageHandle handle, const void* pixels, size_t size);
 	void vulkan_destroy_image(ResourceManager& manager, ImageHandle handle, FrameContext& frame);
 
 	Mesh vulkan_create_mesh(ResourceManager& manager, Vertex* vertices, uint32_t count);

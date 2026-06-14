@@ -176,8 +176,9 @@ namespace Nevarea {
 	NEVAREA_API void renderer_destroy_sampler(RenderContext renderer, Sampler sampler);
 
 	NEVAREA_API void renderer_submit_mesh(RenderContext renderer, Mesh mesh, PipelineHandle pipeline);
-	NEVAREA_API void renderer_dispatch_compute(RenderContext renderer, PipelineHandle pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, uint64_t buffer_address = 0, Image target_image = {});
+	NEVAREA_API void renderer_dispatch_compute(RenderContext renderer, PipelineHandle pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, uint64_t buffer_address = 0, Image target_image = {}, Sampler sampler = {}, Image source = {});
 	NEVAREA_API void renderer_present_image(RenderContext renderer, Image handle);
+	NEVAREA_API void renderer_upload_image(RenderContext renderer, Image handle, const void* pixels, size_t size);
 
 	NEVAREA_API Buffer renderer_create_buffer(RenderContext context, const BufferDescription& description);
 	NEVAREA_API void renderer_destroy_buffer(RenderContext context, Buffer handle);

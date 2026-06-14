@@ -313,12 +313,12 @@ namespace Nevarea {
 		}
 	}
 
-	void renderer_dispatch_compute(RenderContext context, PipelineHandle pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, uint64_t buffer_address, Image target_image) {
+	void renderer_dispatch_compute(RenderContext context, PipelineHandle pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, uint64_t buffer_address, Image target_image, Sampler sampler, Image source) {
 		RenderState* render_state = resolve(context);
 
 		switch (render_state->api) {
     		case RenderingAPI::VULKAN:
-    			render_state->vulkan.compute_dispatches.push_back({ pipeline, groups_x, groups_y, groups_z, { buffer_address, target_image.id } });
+    			render_state->vulkan.compute_dispatches.push_back({ pipeline, groups_x, groups_y, groups_z, { buffer_address, target_image.id, sampler.id, source.id } });
     			break;
 
     		case RenderingAPI::NONE:
@@ -337,6 +337,19 @@ namespace Nevarea {
 			case RenderingAPI::NONE:
 				break;
 		}
+	}
+
+	void renderer_upload_image(RenderContext context, Image handle, const void* pixels, size_t size) {
+        RenderState* render_state = resolve(context);
+
+        switch (render_state->api) {
+            case RenderingAPI::VULKAN: {
+                Renderer::vulkan_upload_image(render_state->vulkan.resource_manager, { handle.id, handle.generation }, pixels, size);
+            }
+
+            case RenderingAPI::NONE:
+                break;
+        }
 	}
 
 	Buffer renderer_create_buffer(RenderContext context, const BufferDescription& description) {
