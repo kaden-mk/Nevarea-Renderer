@@ -97,6 +97,21 @@ namespace Nevarea::Renderer {
 		return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
 	}
 
+	static VkFormat to_vk_vertex_format(Nevarea::VertexFormat format) {
+	    switch (format) {
+			case VertexFormat::FLOAT: return VK_FORMAT_R32_SFLOAT;
+			case VertexFormat::FLOAT2: return VK_FORMAT_R32G32_SFLOAT;
+			case VertexFormat::FLOAT3: return VK_FORMAT_R32G32B32_SFLOAT;
+			case VertexFormat::FLOAT4: return VK_FORMAT_R32G32B32A32_SFLOAT;
+			case VertexFormat::UNORM8x4: return VK_FORMAT_R8G8B8A8_UNORM;
+			case VertexFormat::UINT: return VK_FORMAT_R32_UINT;
+			case VertexFormat::UINT2: return VK_FORMAT_R32G32_UINT;
+			case VertexFormat::UINT4: return VK_FORMAT_R32G32B32A32_UINT;
+		}
+
+		return VK_FORMAT_R32G32B32A32_SFLOAT;
+	}
+
 	static uint32_t bytes_per_pixel(VkFormat format) {
         switch (format) {
             case VK_FORMAT_R8G8B8A8_UNORM: return 4;
@@ -550,9 +565,14 @@ namespace Nevarea::Renderer {
 		manager.image_free_list.push_back(handle.index);
 	}
 
-	Mesh vulkan_create_mesh(ResourceManager& manager, Vertex* vertices, uint32_t count) {
-    	BufferDescription description{};
-    	description.size = sizeof(Vertex) * count;
+	Mesh vulkan_create_mesh(ResourceManager& manager, const void* vertex_data, uint32_t vertex_count, const VertexLayout& layout) {
+	    NEVAREA_ASSERT(layout.stride > 0 && vertex_data, "RESOURCE MANAGER",
+			"you can't create a 0 stride mesh!");
+
+	    size_t size = (size_t)layout.stride * vertex_count;
+
+	    BufferDescription description{};
+    	description.size = size;
     	description.usage = BufferUsage::STORAGE;
     	description.memory = MemoryLocation::CPU_TO_GPU;
     	description.debug_name = "mesh_vertex_buffer";
@@ -561,10 +581,10 @@ namespace Nevarea::Renderer {
 
 		void* data = nullptr;
 		VK_ASSERT(vmaMapMemory(manager.allocator, manager.allocation_pool[handle.index], &data));
-		memcpy(data, vertices, description.size);
+		memcpy(data, vertex_data, description.size);
 		vmaUnmapMemory(manager.allocator, manager.allocation_pool[handle.index]);
 
-		MeshData mesh = { handle, count };
+		MeshData mesh = { handle, vertex_count, layout.stride };
 
 		uint32_t index;
 		if (!manager.mesh_free_list.empty()) {

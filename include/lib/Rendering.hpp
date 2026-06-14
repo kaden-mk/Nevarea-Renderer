@@ -45,10 +45,6 @@ namespace Nevarea {
 		bool is_valid() const { return id != UINT32_MAX; }
 	};
 
-	struct Vertex {
-		float pos[2];
-	};
-
 	struct Mesh {
 		uint32_t id = UINT32_MAX;
 		uint32_t generation = 0;
@@ -95,6 +91,24 @@ namespace Nevarea {
 	enum class AddressMode : uint32_t { REPEAT, MIRRORED_REPEAT, CLAMP_EDGE, CLAMP_BORDER };
 	enum class CompareOp : uint32_t { NONE, LESS, LESS_EQUAL, GREATER, GREATER_EQUAL, EQUAL, ALWAYS };
 	enum class BorderColor : uint32_t { TRANSPARENT_BLACK, OPAQUE_BLACK, OPAQUE_WHITE };
+
+	enum class VertexFormat : uint32_t {
+	    FLOAT, FLOAT2, FLOAT3, FLOAT4,
+		UNORM8x4,
+		UINT, UINT2, UINT4
+	};
+
+	struct VertexAttribute {
+   	    uint32_t location;
+        VertexFormat format;
+        uint32_t offset;
+   	};
+
+    struct VertexLayout {
+        const VertexAttribute* attributes;
+        uint32_t attribute_count;
+        uint32_t stride;
+    };
 
 	struct SamplerDescription {
         Filter min_filter = Filter::LINEAR;
@@ -169,7 +183,7 @@ namespace Nevarea {
 	NEVAREA_API Image renderer_create_image(RenderContext renderer, const ImageDescription& description);
 	NEVAREA_API void renderer_destroy_image(RenderContext renderer, Image handle);
 
-	NEVAREA_API Mesh renderer_create_mesh(RenderContext renderer, Vertex* vertices, uint32_t count);
+	NEVAREA_API Mesh renderer_create_mesh(RenderContext renderer, const void* vertex_data, uint32_t vertex_count, const VertexLayout& layout);
 	NEVAREA_API void renderer_destroy_mesh(RenderContext renderer, Mesh handle);
 
 	NEVAREA_API Sampler renderer_create_sampler(RenderContext renderer, const SamplerDescription& description);
