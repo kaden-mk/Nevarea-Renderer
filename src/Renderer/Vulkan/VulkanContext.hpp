@@ -11,6 +11,8 @@
 #include <vk_mem_alloc.h>
 
 namespace Nevarea::Renderer {
+    struct MeshPush { uint64_t vertex_buffer_address; }; // temporary for now
+
 	struct DrawBucket {
 		PipelineHandle pipeline;
 		std::vector<Mesh> meshes;

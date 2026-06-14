@@ -142,6 +142,15 @@ namespace Nevarea::Renderer {
 	void vulkan_context_draw(VulkanContext& context) {
 	    if (context.device.device_lost) return;
 
+	    VkSurfaceCapabilitiesKHR caps;
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(context.device.physical_device, context.surface.surface, &caps);
+        if (caps.currentExtent.width == 0 || caps.currentExtent.height == 0) {
+            context.compute_dispatches.clear();
+            context.present_target = { UINT32_MAX, 0 };
+            for (DrawBucket& b : context.draw_buckets) b.meshes.clear();
+            return;
+        }
+
 		VkCommandBuffer cmd = begin_frame(context.frame_sync, context.swapchain, context.device, context.surface, context.window);
 		if (cmd == VK_NULL_HANDLE) return;
 
@@ -255,9 +264,8 @@ namespace Nevarea::Renderer {
 			for (Mesh handle : bucket.meshes) {
 				MeshData& mesh = context.resource_manager.mesh_pool[handle.id];
 
-				PushConstants push{};
-				push.vertex_buffer_address = vulkan_get_buffer_address(context.resource_manager, mesh.vertex_buffer);
-				vkCmdPushConstants(cmd, pipeline.layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstants), &push);
+				MeshPush push{ vulkan_get_buffer_address(context.resource_manager, mesh.vertex_buffer) };
+				vkCmdPushConstants(cmd, pipeline.layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPush), &push);
 
 				vkCmdDraw(cmd, mesh.vertex_count, 1, 0, 0);
 			}

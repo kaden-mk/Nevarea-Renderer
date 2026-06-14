@@ -56,25 +56,11 @@ namespace Nevarea::Renderer {
 		return VK_PRESENT_MODE_FIFO_KHR;
 	}
 
-	static VkExtent2D wait_for_valid_extent(WindowHandle window, DeviceContext& device, SurfaceContext& surface) {
-		while (true) {
-			NvWinExtent win_extent = window_get_extent(window);
-			VkExtent2D extent = { win_extent.width, win_extent.height };
-			if (extent.width == 0 || extent.height == 0) {
-				window_system_wait_events();
-				continue;
-			}
-
-			query_swapchain_support(device.physical_device, surface);
-			NEVAREA_ASSERT(has_available_swapchain_support(surface), "VULKAN SWAPCHAIN", "No available swapchain support!");
-
-			VkExtent2D swapchain_extent = choose_swapchain_extent(surface.capabilities, extent);
-			if (swapchain_extent.width > 0 && swapchain_extent.height > 0)
-				return swapchain_extent;
-
-			window_system_wait_events();
-		}
-	}
+	static VkExtent2D query_swapchain_extent(WindowHandle window, DeviceContext& device, SurfaceContext& surface) {
+        query_swapchain_support(device.physical_device, surface);
+        NvWinExtent win = window_get_extent(window);
+        return choose_swapchain_extent(surface.capabilities, { win.width, win.height });
+    }
 
 	static void vulkan_swapchain_image_views(SwapchainContext& swapchain, VkDevice device) {
 		swapchain.image_views.resize(swapchain.images.size());
@@ -100,7 +86,7 @@ namespace Nevarea::Renderer {
 
 	void vulkan_swapchain_init(SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkSwapchainKHR old_swapchain)
 	{
-		VkExtent2D swapchain_extent = wait_for_valid_extent(window, device, surface);
+		VkExtent2D swapchain_extent = query_swapchain_extent(window, device, surface);
 		VkSurfaceFormatKHR surface_format = choose_surface_format(surface.supported_formats);
 		VkPresentModeKHR swapchain_present_mode = choose_swapchain_present_mode(surface.supported_present_modes, swapchain.desired_present_mode);
 
@@ -154,7 +140,11 @@ namespace Nevarea::Renderer {
 	}
 
 	void recreate_swapchain(SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window) {
-		vkDeviceWaitIdle(device.device);
+	    query_swapchain_support(device.physical_device, surface);
+		if (surface.capabilities.currentExtent.width == 0 || surface.capabilities.currentExtent.height == 0)
+            return;
+
+	    vkDeviceWaitIdle(device.device);
 
 		for (auto imageView : swapchain.image_views)
 			vkDestroyImageView(device.device, imageView, nullptr);
