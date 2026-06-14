@@ -17,9 +17,20 @@ namespace Nevarea {
 	enum class SwapchainHandle : uint32_t { INVALID = 0 };
 
 	enum class Format : uint32_t {
-		RGBA8_UNORM,
-		RGBA16_SFLOAT,
-	};
+        // 8-bit unorm / srgb
+        R8_UNORM, RG8_UNORM, RGBA8_UNORM, RGBA8_SRGB, BGRA8_UNORM, BGRA8_SRGB,
+        // float
+        R16_SFLOAT, RG16_SFLOAT, RGBA16_SFLOAT,
+        R32_SFLOAT, RG32_SFLOAT, RGBA32_SFLOAT,
+        // packed
+        RGB10A2_UNORM, RG11B10_UFLOAT,
+        // integer
+        R32_UINT,
+        // depth / depth-stencil
+        D16_UNORM, D32_SFLOAT, D24_UNORM_S8_UINT, D32_SFLOAT_S8_UINT,
+
+        COUNT
+    };
 
 	namespace ImageUsage {
 		enum : uint32_t {

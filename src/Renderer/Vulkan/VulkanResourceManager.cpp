@@ -27,12 +27,52 @@ namespace Nevarea::Renderer {
 		return VMA_MEMORY_USAGE_CPU_TO_GPU;
 	}
 
+	struct FormatInfo {
+		VkFormat vk;
+		uint32_t block_bytes;
+		uint32_t block_width;
+		uint32_t block_height;
+		VkImageAspectFlags aspect;
+	};
+
+	static const FormatInfo k_format_info[] = {
+	    { VK_FORMAT_R8_UNORM, 1, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT },
+		{ VK_FORMAT_R8G8_UNORM, 2, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT },
+		{ VK_FORMAT_R8G8B8A8_UNORM, 4, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT },
+		{ VK_FORMAT_R8G8B8A8_SRGB, 4, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT },
+		{ VK_FORMAT_B8G8R8A8_UNORM, 4, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT },
+		{ VK_FORMAT_B8G8R8A8_SRGB, 4, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT },
+		{ VK_FORMAT_R16_SFLOAT, 2, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT },
+		{ VK_FORMAT_R16G16_SFLOAT, 4, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT },
+		{ VK_FORMAT_R16G16B16A16_SFLOAT, 8, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT },
+		{ VK_FORMAT_R32_SFLOAT, 4, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT },
+		{ VK_FORMAT_R32G32_SFLOAT, 8, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT },
+		{ VK_FORMAT_R32G32B32A32_SFLOAT, 16, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT },
+		{ VK_FORMAT_A2B10G10R10_UNORM_PACK32, 4, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT },
+		{ VK_FORMAT_B10G11R11_UFLOAT_PACK32, 4, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT },
+		{ VK_FORMAT_R32_UINT, 4, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT },
+		{ VK_FORMAT_D16_UNORM, 2, 1, 1, VK_IMAGE_ASPECT_DEPTH_BIT },
+		{ VK_FORMAT_D32_SFLOAT, 4, 1, 1, VK_IMAGE_ASPECT_DEPTH_BIT },
+		{ VK_FORMAT_D24_UNORM_S8_UINT, 4, 1, 1, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT },
+		{ VK_FORMAT_D32_SFLOAT_S8_UINT, 8, 1, 1, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT },
+	};
+
+	static_assert(sizeof(k_format_info) / sizeof(FormatInfo) == (size_t)Format::COUNT,
+		"k_format_info is out of sync with the public Format enum");
+
+	static const FormatInfo& format_info(Format format) {
+		return k_format_info[static_cast<uint32_t>(format)];
+	}
+
 	static VkFormat to_vk_format(Format format) {
-		switch (format) {
-			case Format::RGBA8_UNORM: return VK_FORMAT_R8G8B8A8_UNORM;
-			case Format::RGBA16_SFLOAT: return VK_FORMAT_R16G16B16A16_SFLOAT;
-		}
-		return VK_FORMAT_UNDEFINED;
+		return format_info(format).vk;
+	}
+
+	static size_t format_size(Format format, uint32_t width, uint32_t height) {
+		const FormatInfo& info = format_info(format);
+		uint32_t bw = (width  + info.block_width  - 1) / info.block_width;
+		uint32_t bh = (height + info.block_height - 1) / info.block_height;
+		return static_cast<size_t>(bw) * bh * info.block_bytes;
 	}
 
 	static VkImageUsageFlags to_vk_image_usage(uint32_t usage) {
@@ -112,14 +152,6 @@ namespace Nevarea::Renderer {
 
 		return VK_FORMAT_R32G32B32A32_SFLOAT;
 	}
-
-	static uint32_t bytes_per_pixel(VkFormat format) {
-        switch (format) {
-            case VK_FORMAT_R8G8B8A8_UNORM: return 4;
-            case VK_FORMAT_R16G16B16A16_SFLOAT: return 8;
-            default: return 0;
-        }
-    }
 
 	void vulkan_create_descriptor_pool(ResourceManager& manager) {
 		VkDescriptorPoolSize pool_sizes[] = {
@@ -417,12 +449,12 @@ namespace Nevarea::Renderer {
 	ImageHandle vulkan_create_image(ResourceManager& manager, const ImageDescription& description)
 	{
 	    VkExtent2D extent = { description.width, description.height };
-	    VkFormat format = to_vk_format(description.format);
+	    VkFormat format = k_format_info[(uint32_t)description.format].vk;
 	    VkImageUsageFlags usage = to_vk_image_usage(description.usage);
 
 		AllocatedImage img{};
 		img.extent = extent;
-		img.format = format;
+		img.format = description.format;
 		img.usage = usage;
 
 		VkImageCreateInfo image_info{};
@@ -449,7 +481,7 @@ namespace Nevarea::Renderer {
 		view_info.image = img.image;
 		view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
 		view_info.format = format;
-		view_info.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+		view_info.subresourceRange = { k_format_info[(uint32_t)description.format].aspect, 0, 1, 0, 1 };
 		VK_ASSERT(vkCreateImageView(manager.device, &view_info, nullptr, &img.view));
 
 		uint32_t index;
@@ -516,10 +548,8 @@ namespace Nevarea::Renderer {
 		NEVAREA_ASSERT((img.usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT) != 0,
             "RESOURCE MANAGER", "upload_image: image must be created with ImageUsage::TRANSFER_DST!");
 
-		uint32_t bpp = bytes_per_pixel(img.format);
-		size_t expected = static_cast<size_t>(img.extent.width) * img.extent.height * bpp;
+		size_t expected = format_size(img.format, img.extent.width, img.extent.height);
 
-		NEVAREA_ASSERT(bpp != 0, "RESOURCE MANAGER", "upload_image: unsupported format");
 		NEVAREA_ASSERT(size >= expected, "RESOURCE MANAGER", "upload_image: pixel data smaller than image requires!");
 
 		VkBufferCreateInfo buf_info{};
@@ -550,7 +580,7 @@ namespace Nevarea::Renderer {
             region.bufferOffset = 0;
             region.bufferRowLength = 0;
             region.bufferImageHeight = 0;
-            region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            region.imageSubresource.aspectMask = k_format_info[(uint32_t)img.format].aspect;
             region.imageSubresource.mipLevel = 0;
             region.imageSubresource.baseArrayLayer = 0;
             region.imageSubresource.layerCount = 1;
