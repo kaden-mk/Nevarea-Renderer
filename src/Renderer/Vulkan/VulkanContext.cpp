@@ -159,7 +159,7 @@ namespace Nevarea::Renderer {
 			const ComputeDispatch& dispatch = context.compute_dispatches[i];
 			const PipelineContext& pipeline = vulkan_pipeline_get(context, dispatch.pipeline);
 
-			uint32_t img = dispatch.push.image_index;
+			uint32_t img = dispatch.target_image.index;
 			if (img != UINT32_MAX && img != context.present_target.index
 				&& img < context.resource_manager.image_pool.size()) {
 				transition_tracked(cmd, context.resource_manager.image_pool[img], VK_IMAGE_LAYOUT_GENERAL,
@@ -169,7 +169,7 @@ namespace Nevarea::Renderer {
 
 			vkCmdBindPipeline(cmd, pipeline.bind_point, pipeline.pipeline);
 			vkCmdBindDescriptorSets(cmd, pipeline.bind_point, pipeline.layout, 0, 1, &context.resource_manager.descriptor_set, 0, nullptr);
-			vkCmdPushConstants(cmd, pipeline.layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(PushConstants), &dispatch.push);
+			vkCmdPushConstants(cmd, pipeline.layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, dispatch.push_size, dispatch.push_data);
 			vkCmdDispatch(cmd, dispatch.groups_x, dispatch.groups_y, dispatch.groups_z);
 
 			if (i + 1 < context.compute_dispatches.size()) {

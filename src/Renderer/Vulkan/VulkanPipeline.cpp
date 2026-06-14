@@ -42,17 +42,17 @@ namespace Nevarea::Renderer {
 		VkShaderModule compute_shader;
 
 		create_shader_module(device, compute_code, &compute_shader);
-	
+
 		VkPipelineShaderStageCreateInfo stage{};
 		stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
 		stage.module = compute_shader;
 		stage.pName = "main";
-		
+
 		VkPushConstantRange push_range{};
 		push_range.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 		push_range.offset = 0;
-		push_range.size = sizeof(PushConstants);
+		push_range.size = NEVAREA_MAX_PUSH_CONSTANTS_SIZE;
 
 		VkPipelineLayoutCreateInfo layout_info{};
 		layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

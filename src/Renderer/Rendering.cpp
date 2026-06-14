@@ -3,6 +3,7 @@
 #include "Renderer/Vulkan/VulkanContext.hpp"
 #include "Renderer/Vulkan/VulkanFrames.hpp"
 #include "Renderer/Vulkan/VulkanResourceManager.hpp"
+#include "lib/Core.hpp"
 #include "lib/WindowSystem.hpp"
 
 namespace Nevarea {
@@ -313,13 +314,20 @@ namespace Nevarea {
 		}
 	}
 
-	void renderer_dispatch_compute(RenderContext context, PipelineHandle pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, uint64_t buffer_address, Image target_image, Sampler sampler, Image source) {
+	void renderer_dispatch_compute(RenderContext context, PipelineHandle pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, const void* push, size_t size, Image storage_target) {
 		RenderState* render_state = resolve(context);
 
 		switch (render_state->api) {
-    		case RenderingAPI::VULKAN:
-    			render_state->vulkan.compute_dispatches.push_back({ pipeline, groups_x, groups_y, groups_z, { buffer_address, target_image.id, sampler.id, source.id } });
-    			break;
+    		case RenderingAPI::VULKAN: {
+                Renderer::ComputeDispatch dispatch{ pipeline, groups_x, groups_y, groups_z };
+                NEVAREA_ASSERT(size <= sizeof(dispatch.push_data), "RENDERER", "push data exceeds 128 bytes");
+                memcpy(dispatch.push_data, push, size);
+                dispatch.push_size = (uint32_t)size;
+                dispatch.target_image = { storage_target.id, storage_target.generation };
+                render_state->vulkan.compute_dispatches.push_back(dispatch);
+
+   			    break;
+            }
 
     		case RenderingAPI::NONE:
     			break;

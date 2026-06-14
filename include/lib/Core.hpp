@@ -71,3 +71,5 @@
 		#define NEVAREA_API
 	#endif
 #endif
+
+#define NEVAREA_MAX_PUSH_CONSTANTS_SIZE 128

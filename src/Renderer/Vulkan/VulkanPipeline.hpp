@@ -3,13 +3,6 @@
 #include "VulkanSwapchain.hpp"
 
 namespace Nevarea::Renderer {
-    struct PushConstants {
-        uint64_t vertex_buffer_address;
-        uint32_t image_index;
-        uint32_t sampler_index;
-        uint32_t texture_index;
-    };
-
     struct PipelineContext {
         VkPipeline pipeline;
         VkPipelineLayout layout;

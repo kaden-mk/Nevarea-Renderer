@@ -19,7 +19,10 @@ namespace Nevarea::Renderer {
 	struct ComputeDispatch {
 		PipelineHandle pipeline;
 		uint32_t groups_x, groups_y, groups_z;
-		PushConstants push;
+
+		uint8_t push_data[NEVAREA_MAX_PUSH_CONSTANTS_SIZE];
+		uint32_t push_size;
+		ImageHandle target_image = { UINT32_MAX, 0 };
 	};
 
 	struct VulkanContext {
