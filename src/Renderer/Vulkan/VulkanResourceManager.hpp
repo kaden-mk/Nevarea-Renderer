@@ -88,6 +88,7 @@ namespace Nevarea::Renderer {
 	BufferHandle vulkan_create_buffer(ResourceManager& manager, const BufferDescription& buffer_description);
 	VkBuffer vulkan_get_buffer(const ResourceManager& manager, BufferHandle handle);
 	uint64_t vulkan_get_buffer_address(const ResourceManager& manager, BufferHandle handle);
+	void vulkan_upload_buffer(ResourceManager& manager, BufferHandle dst, const void* data, size_t size);
 	void vulkan_destroy_buffer(ResourceManager&, BufferHandle handle);
 
 	ImageHandle vulkan_create_image(ResourceManager& manager, const ImageDescription& description);

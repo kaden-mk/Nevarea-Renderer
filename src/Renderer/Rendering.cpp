@@ -353,6 +353,7 @@ namespace Nevarea {
         switch (render_state->api) {
             case RenderingAPI::VULKAN: {
                 Renderer::vulkan_upload_image(render_state->vulkan.resource_manager, { handle.id, handle.generation }, pixels, size);
+                break;
             }
 
             case RenderingAPI::NONE:
@@ -403,10 +404,17 @@ namespace Nevarea {
                 vmaGetAllocationInfo(manager.allocator, manager.allocation_pool[handle.id], &alloc_info);
                 NEVAREA_ASSERT(size <= alloc_info.size, "RESOURCE MANAGER", "renderer_update_buffer: size exceeds buffer allocation!");
 
-                void* mapped_memory = nullptr;
-                VK_ASSERT(vmaMapMemory(manager.allocator, manager.allocation_pool[handle.id], &mapped_memory));
-                memcpy(mapped_memory, data, size);
-                vmaUnmapMemory(manager.allocator, manager.allocation_pool[handle.id]);
+                VkMemoryPropertyFlags mem_flags;
+                vmaGetAllocationMemoryProperties(manager.allocator, manager.allocation_pool[handle.id], &mem_flags);
+
+                if (mem_flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+                    void* mapped_memory = nullptr;
+                    VK_ASSERT(vmaMapMemory(manager.allocator, manager.allocation_pool[handle.id], &mapped_memory));
+                    memcpy(mapped_memory, data, size);
+                    vmaUnmapMemory(manager.allocator, manager.allocation_pool[handle.id]);
+                } else
+                    Renderer::vulkan_upload_buffer(manager, { handle.id, handle.generation }, data, size);
+
                 break;
             }
 

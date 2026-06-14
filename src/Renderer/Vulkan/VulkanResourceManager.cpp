@@ -369,6 +369,35 @@ namespace Nevarea::Renderer {
 		return vkGetBufferDeviceAddress(manager.device, &address_info);
 	}
 
+	void vulkan_upload_buffer(ResourceManager& manager, BufferHandle dst, const void* data, size_t size) {
+	    VkBuffer dst_buffer = vulkan_get_buffer(manager, dst);
+
+		VkBufferCreateInfo stg_info{};
+		stg_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		stg_info.size = size;
+		stg_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		stg_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		VmaAllocationCreateInfo alloc_info{};
+		alloc_info.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+
+		VkBuffer staging_buffer;
+		VmaAllocation staging_alloc;
+		VK_ASSERT(vmaCreateBuffer(manager.allocator, &stg_info, &alloc_info, &staging_buffer, &staging_alloc, nullptr));
+
+        void* mapped;
+        VK_ASSERT(vmaMapMemory(manager.allocator, staging_alloc, &mapped));
+        memcpy(mapped, data, size);
+        vmaUnmapMemory(manager.allocator, staging_alloc);
+
+        vulkan_immediate_submit(manager, [&](VkCommandBuffer cmd) {
+            VkBufferCopy region{ 0, 0, size };
+            vkCmdCopyBuffer(cmd, staging_buffer, dst_buffer, 1, &region);
+        });
+
+        vmaDestroyBuffer(manager.allocator, staging_buffer, staging_alloc);
+	}
+
 	void vulkan_destroy_buffer(ResourceManager& manager, BufferHandle handle)
 	{
 		NEVAREA_ASSERT(handle.index < manager.buffer_pool.size(),
@@ -574,16 +603,12 @@ namespace Nevarea::Renderer {
 
 	    BufferDescription description{};
     	description.size = size;
-    	description.usage = BufferUsage::STORAGE;
-    	description.memory = MemoryLocation::CPU_TO_GPU;
+    	description.usage = BufferUsage::STORAGE | BufferUsage::TRANSFER_DST;
+    	description.memory = MemoryLocation::GPU_ONLY;
     	description.debug_name = "mesh_vertex_buffer";
 
 		BufferHandle handle = vulkan_create_buffer(manager, description);
-
-		void* data = nullptr;
-		VK_ASSERT(vmaMapMemory(manager.allocator, manager.allocation_pool[handle.index], &data));
-		memcpy(data, vertex_data, description.size);
-		vmaUnmapMemory(manager.allocator, manager.allocation_pool[handle.index]);
+		vulkan_upload_buffer(manager, handle, vertex_data, size);
 
 		MeshData mesh = {};
 		mesh.vertex_buffer = handle;
@@ -591,18 +616,16 @@ namespace Nevarea::Renderer {
 		mesh.vertex_count = vertex_count;
 
 		if (index_count > 0) {
+		    size_t index_size = index_count * sizeof(uint32_t);
+
 		    BufferDescription index_description{};
-			index_description.size = index_count * sizeof(uint32_t);
-			index_description.usage = BufferUsage::INDEX;
-			index_description.memory = MemoryLocation::CPU_TO_GPU;
+			index_description.size = index_size;
+			index_description.usage = BufferUsage::INDEX | BufferUsage::TRANSFER_DST;
+			index_description.memory = MemoryLocation::GPU_ONLY;
 			index_description.debug_name = "mesh_index_buffer";
 
 			BufferHandle index_buffer = vulkan_create_buffer(manager, index_description);
-
-			void* index_data = nullptr;
-			VK_ASSERT(vmaMapMemory(manager.allocator, manager.allocation_pool[index_buffer.index], &index_data));
-			memcpy(index_data, indices, index_description.size);
-			vmaUnmapMemory(manager.allocator, manager.allocation_pool[index_buffer.index]);
+			vulkan_upload_buffer(manager, index_buffer, indices, index_size);
 
 			mesh.index_count = index_count;
 			mesh.index_buffer = index_buffer;
