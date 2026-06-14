@@ -183,7 +183,7 @@ namespace Nevarea {
 	NEVAREA_API Image renderer_create_image(RenderContext renderer, const ImageDescription& description);
 	NEVAREA_API void renderer_destroy_image(RenderContext renderer, Image handle);
 
-	NEVAREA_API Mesh renderer_create_mesh(RenderContext renderer, const void* vertex_data, uint32_t vertex_count, const VertexLayout& layout);
+	NEVAREA_API Mesh renderer_create_mesh(RenderContext renderer, const void* vertex_data, uint32_t vertex_count, const VertexLayout& layout, const uint32_t* indices = nullptr, uint32_t index_count = 0);
 	NEVAREA_API void renderer_destroy_mesh(RenderContext renderer, Mesh handle);
 
 	NEVAREA_API Sampler renderer_create_sampler(RenderContext renderer, const SamplerDescription& description);

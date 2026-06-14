@@ -252,12 +252,12 @@ namespace Nevarea {
 		}
 	}
 
-	Mesh renderer_create_mesh(RenderContext context, const void* vertex_data, uint32_t vertex_count, const VertexLayout& layout) {
+	Mesh renderer_create_mesh(RenderContext context, const void* vertex_data, uint32_t vertex_count, const VertexLayout& layout, const uint32_t* indices, uint32_t index_count) {
 		RenderState* render_state = resolve(context);
 
 		switch (render_state->api) {
 			case RenderingAPI::VULKAN: {
-				return Renderer::vulkan_create_mesh(render_state->vulkan.resource_manager, vertex_data, vertex_count, layout);
+				return Renderer::vulkan_create_mesh(render_state->vulkan.resource_manager, vertex_data, vertex_count, layout, index_count, indices);
 			}
 
 			case RenderingAPI::NONE: {

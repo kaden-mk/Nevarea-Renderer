@@ -4,6 +4,7 @@
 
 #include "lib/Core.hpp"
 #include "lib/Rendering.hpp"
+#include <cstdint>
 
 namespace Nevarea::Renderer {
     static VkBufferUsageFlags to_vk_buffer_usage(uint32_t usage) {
@@ -565,7 +566,7 @@ namespace Nevarea::Renderer {
 		manager.image_free_list.push_back(handle.index);
 	}
 
-	Mesh vulkan_create_mesh(ResourceManager& manager, const void* vertex_data, uint32_t vertex_count, const VertexLayout& layout) {
+	Mesh vulkan_create_mesh(ResourceManager& manager, const void* vertex_data, uint32_t vertex_count, const VertexLayout& layout, uint32_t index_count, const uint32_t* indices) {
 	    NEVAREA_ASSERT(layout.stride > 0 && vertex_data, "RESOURCE MANAGER",
 			"you can't create a 0 stride mesh!");
 
@@ -584,7 +585,28 @@ namespace Nevarea::Renderer {
 		memcpy(data, vertex_data, description.size);
 		vmaUnmapMemory(manager.allocator, manager.allocation_pool[handle.index]);
 
-		MeshData mesh = { handle, vertex_count, layout.stride };
+		MeshData mesh = {};
+		mesh.vertex_buffer = handle;
+		mesh.vertex_address = vulkan_get_buffer_address(manager, handle);
+		mesh.vertex_count = vertex_count;
+
+		if (index_count > 0) {
+		    BufferDescription index_description{};
+			index_description.size = index_count * sizeof(uint32_t);
+			index_description.usage = BufferUsage::INDEX;
+			index_description.memory = MemoryLocation::CPU_TO_GPU;
+			index_description.debug_name = "mesh_index_buffer";
+
+			BufferHandle index_buffer = vulkan_create_buffer(manager, index_description);
+
+			void* index_data = nullptr;
+			VK_ASSERT(vmaMapMemory(manager.allocator, manager.allocation_pool[index_buffer.index], &index_data));
+			memcpy(index_data, indices, index_description.size);
+			vmaUnmapMemory(manager.allocator, manager.allocation_pool[index_buffer.index]);
+
+			mesh.index_count = index_count;
+			mesh.index_buffer = index_buffer;
+		}
 
 		uint32_t index;
 		if (!manager.mesh_free_list.empty()) {
@@ -609,6 +631,7 @@ namespace Nevarea::Renderer {
 			"RESOURCE MANAGER", "Stale Mesh handle (generation mismatch)!");
 
 		MeshData& mesh = manager.mesh_pool[handle.id];
+
 		BufferHandle vertex_buffer = mesh.vertex_buffer;
 		uint32_t buffer_id = vertex_buffer.index;
 
@@ -623,6 +646,22 @@ namespace Nevarea::Renderer {
 		manager.buffer_pool[buffer_id] = VK_NULL_HANDLE;
 		manager.generation_pool[buffer_id]++;
 		manager.free_list.push_back(buffer_id);
+
+		if (mesh.index_buffer.is_valid()) {
+		    BufferHandle index_buffer = mesh.index_buffer;
+			uint32_t index_id = index_buffer.index;
+
+			VkBuffer vk_index_buffer = manager.buffer_pool[index_id];
+			VmaAllocation index_allocation = manager.allocation_pool[index_id];
+
+			vulkan_resources_push_deletor(frame.deletion_queues[frame.current_frame], [allocator, vk_index_buffer, index_allocation]() {
+				vmaDestroyBuffer(allocator, vk_index_buffer, index_allocation);
+			});
+
+			manager.buffer_pool[index_id] = VK_NULL_HANDLE;
+			manager.generation_pool[index_id]++;
+			manager.free_list.push_back(index_id);
+		}
 
 		manager.mesh_generation_pool[handle.id]++;
 		manager.mesh_free_list.push_back(handle.id);

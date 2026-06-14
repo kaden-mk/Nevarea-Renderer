@@ -36,7 +36,12 @@ namespace Nevarea::Renderer {
 
 	struct MeshData {
 		BufferHandle vertex_buffer;
+		uint64_t vertex_address;
 		uint32_t vertex_count;
+
+		BufferHandle index_buffer;
+		uint32_t index_count = 0;
+
 		uint32_t stride;
 	};
 
@@ -90,7 +95,7 @@ namespace Nevarea::Renderer {
 	void vulkan_upload_image(ResourceManager& manager, ImageHandle handle, const void* pixels, size_t size);
 	void vulkan_destroy_image(ResourceManager& manager, ImageHandle handle, FrameContext& frame);
 
-	Mesh vulkan_create_mesh(ResourceManager& manager, const void* vertex_data, uint32_t vertex_count, const VertexLayout& layout);
+	Mesh vulkan_create_mesh(ResourceManager& manager, const void* vertex_data, uint32_t vertex_count, const VertexLayout& layout, uint32_t index_count, const uint32_t* indices);
 	void vulkan_destroy_mesh(ResourceManager& manager, Mesh handle, FrameContext& frame);
 
 	Sampler vulkan_create_sampler(ResourceManager& manager, const SamplerDescription& description);

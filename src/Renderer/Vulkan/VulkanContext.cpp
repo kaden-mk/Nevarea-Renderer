@@ -264,10 +264,15 @@ namespace Nevarea::Renderer {
 			for (Mesh handle : bucket.meshes) {
 				MeshData& mesh = context.resource_manager.mesh_pool[handle.id];
 
-				MeshPush push{ vulkan_get_buffer_address(context.resource_manager, mesh.vertex_buffer) };
+				MeshPush push{ mesh.vertex_address };
 				vkCmdPushConstants(cmd, pipeline.layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPush), &push);
 
-				vkCmdDraw(cmd, mesh.vertex_count, 1, 0, 0);
+				if (mesh.index_buffer.is_valid()) {
+				    VkBuffer index_buffer  = vulkan_get_buffer(context.resource_manager, mesh.index_buffer);
+                    vkCmdBindIndexBuffer(cmd, index_buffer, 0, VK_INDEX_TYPE_UINT32);
+                    vkCmdDrawIndexed(cmd, mesh.index_count, 1, 0, 0, 0);
+				} else
+                    vkCmdDraw(cmd, mesh.vertex_count, 1, 0, 0);
 			}
 
 			bucket.meshes.clear();
