@@ -17,4 +17,6 @@ namespace Nevarea {
         RenderState() {}
         ~RenderState() {}
     };
+
+    RenderState* resolve(RenderContext context);
 }

@@ -127,4 +127,13 @@ namespace Nevarea::Renderer {
 
 		return VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	}
+
+	VkPresentModeKHR to_vk_present_mode(PresentMode mode) {
+		switch (mode) {
+			case PresentMode::VSYNC: return VK_PRESENT_MODE_FIFO_KHR;
+			case PresentMode::MAILBOX: return VK_PRESENT_MODE_MAILBOX_KHR;
+			case PresentMode::IMMEDIATE: return VK_PRESENT_MODE_IMMEDIATE_KHR;
+		}
+		return VK_PRESENT_MODE_FIFO_KHR;
+	}
 }

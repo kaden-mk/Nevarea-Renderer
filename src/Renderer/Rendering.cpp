@@ -3,6 +3,7 @@
 #include "Renderer/Vulkan/VulkanContext.hpp"
 #include "Renderer/Vulkan/VulkanFrames.hpp"
 #include "Renderer/Vulkan/VulkanResourceManager.hpp"
+#include "Renderer/Vulkan/VulkanTranslate.hpp"
 #include "lib/Core.hpp"
 #include "lib/WindowSystem.hpp"
 
@@ -10,25 +11,16 @@ namespace Nevarea {
 	namespace {
 		constexpr uint32_t MAX_RENDERERS = 4;
 		RenderState g_renderers[MAX_RENDERERS];
+	}
 
-		RenderState* resolve(RenderContext context) {
-			uint32_t id = static_cast<uint32_t>(context);
-			NEVAREA_ASSERT(id != 0 && id <= MAX_RENDERERS, "RENDERER", "Invalid RenderContext!");
+	RenderState* resolve(RenderContext context) {
+		uint32_t id = static_cast<uint32_t>(context);
+		NEVAREA_ASSERT(id != 0 && id <= MAX_RENDERERS, "RENDERER", "Invalid RenderContext!");
 
-			RenderState* render_state = &g_renderers[id - 1];
-			NEVAREA_ASSERT(render_state->is_active, "RENDERER", "RenderContext refers to a destroyed renderer!");
+		RenderState* render_state = &g_renderers[id - 1];
+		NEVAREA_ASSERT(render_state->is_active, "RENDERER", "RenderContext refers to a destroyed renderer!");
 
-			return render_state;
-		}
-
-		static VkPresentModeKHR to_vk_present_mode(PresentMode mode) {
-			switch (mode) {
-				case PresentMode::VSYNC:     return VK_PRESENT_MODE_FIFO_KHR;
-				case PresentMode::MAILBOX:   return VK_PRESENT_MODE_MAILBOX_KHR;
-				case PresentMode::IMMEDIATE: return VK_PRESENT_MODE_IMMEDIATE_KHR;
-			}
-			return VK_PRESENT_MODE_FIFO_KHR;
-		}
+		return render_state;
 	}
 
 	RenderContext renderer_create(RenderingAPI api)
@@ -167,7 +159,7 @@ namespace Nevarea {
 		switch (render_state->api) {
 			case RenderingAPI::VULKAN: {
 				auto& vk = render_state->vulkan;
-				vk.swapchain.desired_present_mode = to_vk_present_mode(mode);
+				vk.swapchain.desired_present_mode = Renderer::to_vk_present_mode(mode);
 				Renderer::recreate_swapchain(vk.swapchain, vk.device, vk.surface, vk.window);
 				Renderer::vulkan_frame_sync_ensure_present_semaphores(vk.frame_sync, vk.device.device, static_cast<uint32_t>(vk.swapchain.images.size()));
 				break;

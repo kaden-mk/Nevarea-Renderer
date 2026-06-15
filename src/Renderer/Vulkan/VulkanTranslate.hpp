@@ -16,4 +16,5 @@ namespace Nevarea::Renderer {
 	VkPolygonMode to_vk_polygon_mode(PolygonMode mode);
 	VkCullModeFlags to_vk_cull_mode(CullMode cull);
 	VkFrontFace to_vk_front_face(FrontFace face);
+	VkPresentModeKHR to_vk_present_mode(PresentMode mode);
 }
