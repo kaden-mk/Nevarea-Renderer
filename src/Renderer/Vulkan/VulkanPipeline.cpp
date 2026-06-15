@@ -4,6 +4,7 @@
 #include "VulkanFrames.hpp"
 #include "VulkanResourceManager.hpp"
 #include "VulkanDebug.hpp"
+#include "VulkanTranslate.hpp"
 
 using FileData = std::vector<char>;
 
@@ -77,9 +78,9 @@ namespace Nevarea::Renderer {
 		pipeline.bind_point = VK_PIPELINE_BIND_POINT_COMPUTE;
 	}
 
-	void vulkan_pipeline_init(PipelineContext& pipeline, VkDevice device, VkFormat color_format, VkDescriptorSetLayout descriptor_layout, const char* vert, const char* frag) {
-		FileData vert_code = read_file(vert);
-		FileData frag_code = read_file(frag);
+	void vulkan_pipeline_init(PipelineContext& pipeline, VkDevice device, VkFormat color_format, VkDescriptorSetLayout descriptor_layout, const PipelineDescription& desc) {
+		FileData vert_code = read_file(desc.vertex_shader);
+		FileData frag_code = read_file(desc.fragment_shader);
 
 		VkShaderModule vert_shader;
 		VkShaderModule frag_shader;
@@ -100,7 +101,7 @@ namespace Nevarea::Renderer {
 		layout_info.pSetLayouts = &descriptor_layout;
 
 		VK_ASSERT(vkCreatePipelineLayout(device, &layout_info, nullptr, &pipeline.layout));
-		VK_NAME(device, VK_OBJECT_TYPE_PIPELINE_LAYOUT, pipeline.layout, vert);
+		VK_NAME(device, VK_OBJECT_TYPE_PIPELINE_LAYOUT, pipeline.layout, desc.vertex_shader);
 
 		VkPipelineShaderStageCreateInfo shader_stages[2]{};
 		shader_stages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -118,7 +119,7 @@ namespace Nevarea::Renderer {
 
 		VkPipelineInputAssemblyStateCreateInfo input_assembly{};
 		input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		input_assembly.topology = to_vk_topology(desc.topology);
 
 		VkDynamicState dynamic_states[] = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
 		VkPipelineDynamicStateCreateInfo dynamic_state{};
@@ -133,9 +134,9 @@ namespace Nevarea::Renderer {
 
 		VkPipelineRasterizationStateCreateInfo rasterization{};
 		rasterization.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-		rasterization.polygonMode = VK_POLYGON_MODE_FILL;
-		rasterization.cullMode = VK_CULL_MODE_NONE;
-		rasterization.frontFace = VK_FRONT_FACE_CLOCKWISE;
+		rasterization.polygonMode = to_vk_polygon_mode(desc.polygon_mode);
+		rasterization.cullMode = to_vk_cull_mode(desc.cull_mode);
+		rasterization.frontFace = to_vk_front_face(desc.front_face);
 		rasterization.lineWidth = 1.0f;
 
 		VkPipelineMultisampleStateCreateInfo multisample{};
@@ -143,8 +144,16 @@ namespace Nevarea::Renderer {
 		multisample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
 		VkPipelineColorBlendAttachmentState blend_attachment{};
-		blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-		                                  VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+		blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+		blend_attachment.blendEnable = desc.blend_enable ? VK_TRUE : VK_FALSE;
+        if (desc.blend_enable) {
+            blend_attachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+            blend_attachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+            blend_attachment.colorBlendOp        = VK_BLEND_OP_ADD;
+            blend_attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+            blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+            blend_attachment.alphaBlendOp        = VK_BLEND_OP_ADD;
+        }
 
 		VkPipelineColorBlendStateCreateInfo color_blend{};
 		color_blend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -155,6 +164,15 @@ namespace Nevarea::Renderer {
 		rendering_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
 		rendering_info.colorAttachmentCount = 1;
 		rendering_info.pColorAttachmentFormats = &color_format;
+		rendering_info.depthAttachmentFormat = VK_FORMAT_D32_SFLOAT;
+
+		bool has_depth = desc.depth_format != Format::COUNT;
+        VkPipelineDepthStencilStateCreateInfo depth_stencil{};
+        depth_stencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        depth_stencil.depthTestEnable  = (desc.depth_test  && has_depth) ? VK_TRUE : VK_FALSE;
+        depth_stencil.depthWriteEnable = (desc.depth_write && has_depth) ? VK_TRUE : VK_FALSE;
+        depth_stencil.depthCompareOp   = to_vk_compare_op(desc.depth_compare);
+        rendering_info.depthAttachmentFormat = has_depth ? to_vk_format(desc.depth_format) : VK_FORMAT_UNDEFINED;
 
 		VkGraphicsPipelineCreateInfo pipeline_info{};
 		pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -169,9 +187,10 @@ namespace Nevarea::Renderer {
 		pipeline_info.pColorBlendState = &color_blend;
 		pipeline_info.pDynamicState = &dynamic_state;
 		pipeline_info.layout = pipeline.layout;
+		pipeline_info.pDepthStencilState = &depth_stencil;
 
 		VK_ASSERT(vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline.pipeline));
-		VK_NAME(device, VK_OBJECT_TYPE_PIPELINE, pipeline.pipeline, vert);
+		VK_NAME(device, VK_OBJECT_TYPE_PIPELINE, pipeline.pipeline, desc.vertex_shader);
 
 		vkDestroyShaderModule(device, vert_shader, nullptr);
 		vkDestroyShaderModule(device, frag_shader, nullptr);

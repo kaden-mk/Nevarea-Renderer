@@ -215,7 +215,7 @@ namespace Nevarea {
 		return {};
 	}
 
-	PipelineHandle renderer_create_pipeline(RenderContext context, const char* vert, const char* frag) {
+	PipelineHandle renderer_create_pipeline(RenderContext context, const PipelineDescription& description) {
 		RenderState* render_state = resolve(context);
 
 		switch (render_state->api) {
@@ -226,9 +226,7 @@ namespace Nevarea {
 					render_state->vulkan.device.device,
 					render_state->vulkan.swapchain.image_format,
 					render_state->vulkan.resource_manager.descriptor_layout,
-					vert,
-					frag
-				);
+					description);
 
 				return Renderer::vulkan_pipeline_add(render_state->vulkan, pipeline);
 			}

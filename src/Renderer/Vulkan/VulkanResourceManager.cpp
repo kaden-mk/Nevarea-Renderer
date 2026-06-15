@@ -1,6 +1,7 @@
 #include "VulkanResourceManager.hpp"
 #include "Renderer/Vulkan/VulkanFrames.hpp"
 #include "VulkanDebug.hpp"
+#include "VulkanTranslate.hpp"
 
 #include "lib/Core.hpp"
 #include "lib/Rendering.hpp"
@@ -34,7 +35,7 @@ namespace Nevarea::Renderer {
 		return k_format_info[static_cast<uint32_t>(format)];
 	}
 
-	static VkFormat to_vk_format(Format format) {
+	VkFormat to_vk_format(Format format) {
 		return format_info(format).vk;
 	}
 
@@ -54,74 +55,6 @@ namespace Nevarea::Renderer {
 		if (usage & ImageUsage::COLOR_TARGET) flags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 		if (usage & ImageUsage::DEPTH_STENCIL_TARGET) flags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 		return flags;
-	}
-
-	static VkSamplerAddressMode to_vk_address_mode(Nevarea::AddressMode mode) {
-	    switch (mode) {
-			case AddressMode::REPEAT: return VK_SAMPLER_ADDRESS_MODE_REPEAT;
-			case AddressMode::MIRRORED_REPEAT: return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
-			case AddressMode::CLAMP_EDGE: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-			case AddressMode::CLAMP_BORDER: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-		}
-
-		return VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	}
-
-	static VkFilter to_vk_filter(Nevarea::Filter filter) {
-	    switch (filter) {
-			case Filter::NEAREST: return VK_FILTER_NEAREST;
-			case Filter::LINEAR: return VK_FILTER_LINEAR;
-		}
-
-		return VK_FILTER_LINEAR;
-	}
-
-	static VkSamplerMipmapMode to_vk_mipmap_mode(Nevarea::MipmapMode mode) {
-	    switch (mode) {
-			case MipmapMode::LINEAR: return VK_SAMPLER_MIPMAP_MODE_LINEAR;
-			case MipmapMode::NEAREST: return VK_SAMPLER_MIPMAP_MODE_NEAREST;
-		}
-
-		return VK_SAMPLER_MIPMAP_MODE_LINEAR;
-	}
-
-	static VkCompareOp to_vk_compare_op(Nevarea::CompareOp op) {
-		switch (op) {
-			case CompareOp::NONE: return VK_COMPARE_OP_ALWAYS; // unused: compareEnable is false
-			case CompareOp::LESS: return VK_COMPARE_OP_LESS;
-			case CompareOp::LESS_EQUAL: return VK_COMPARE_OP_LESS_OR_EQUAL;
-			case CompareOp::GREATER: return VK_COMPARE_OP_GREATER;
-			case CompareOp::GREATER_EQUAL: return VK_COMPARE_OP_GREATER_OR_EQUAL;
-			case CompareOp::EQUAL: return VK_COMPARE_OP_EQUAL;
-			case CompareOp::ALWAYS: return VK_COMPARE_OP_ALWAYS;
-		}
-
-		return VK_COMPARE_OP_ALWAYS;
-	}
-
-	static VkBorderColor to_vk_border_color(Nevarea::BorderColor color) {
-		switch (color) {
-			case BorderColor::TRANSPARENT_BLACK: return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
-			case BorderColor::OPAQUE_BLACK: return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
-			case BorderColor::OPAQUE_WHITE: return VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-		}
-
-		return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
-	}
-
-	static VkFormat to_vk_vertex_format(Nevarea::VertexFormat format) {
-	    switch (format) {
-			case VertexFormat::FLOAT: return VK_FORMAT_R32_SFLOAT;
-			case VertexFormat::FLOAT2: return VK_FORMAT_R32G32_SFLOAT;
-			case VertexFormat::FLOAT3: return VK_FORMAT_R32G32B32_SFLOAT;
-			case VertexFormat::FLOAT4: return VK_FORMAT_R32G32B32A32_SFLOAT;
-			case VertexFormat::UNORM8x4: return VK_FORMAT_R8G8B8A8_UNORM;
-			case VertexFormat::UINT: return VK_FORMAT_R32_UINT;
-			case VertexFormat::UINT2: return VK_FORMAT_R32G32_UINT;
-			case VertexFormat::UINT4: return VK_FORMAT_R32G32B32A32_UINT;
-		}
-
-		return VK_FORMAT_R32G32B32A32_SFLOAT;
 	}
 
 	void vulkan_create_descriptor_pool(ResourceManager& manager) {

@@ -107,6 +107,8 @@ namespace Nevarea::Renderer {
 		VkDevice device;
 	};
 
+	VkFormat to_vk_format(Format format);
+
 	void vulkan_resources_init(ResourceManager& manager, VmaAllocator allocator, VkDevice device, VkQueue graphics_queue, uint32_t graphics_family_index);
 	void vulkan_resources_destroy(ResourceManager& manager);
 

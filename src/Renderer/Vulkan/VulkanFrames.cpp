@@ -1,5 +1,6 @@
 #include "VulkanFrames.hpp"
 #include "lib/Rendering.hpp"
+#include "VulkanTranslate.hpp"
 
 namespace Nevarea::Renderer {
 	static NEVAREA_FORCE_INLINE VkCommandBuffer prepare_command_buffer(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window) {
@@ -20,25 +21,6 @@ namespace Nevarea::Renderer {
 		VK_ASSERT(vkResetCommandBuffer(cmd, 0));
 
 		return cmd;
-	}
-
-	static VkAttachmentLoadOp to_vk_load_op(LoadOp op) {
-	    switch (op) {
-			case LoadOp::LOAD: return VK_ATTACHMENT_LOAD_OP_LOAD;
-			case LoadOp::CLEAR: return VK_ATTACHMENT_LOAD_OP_CLEAR;
-			case LoadOp::DONT_CARE: return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		}
-
-		return VK_ATTACHMENT_LOAD_OP_NONE;
-	}
-
-	static VkAttachmentStoreOp to_vk_store_op(StoreOp op) {
-	    switch (op) {
-			case StoreOp::STORE: return VK_ATTACHMENT_STORE_OP_STORE;
-			case StoreOp::DONT_CARE: return VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		}
-
-	    return VK_ATTACHMENT_STORE_OP_NONE;
 	}
 
 	VkCommandBuffer begin_frame(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window) {

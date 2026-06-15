@@ -106,6 +106,10 @@ namespace Nevarea {
 	enum class AddressMode : uint32_t { REPEAT, MIRRORED_REPEAT, CLAMP_EDGE, CLAMP_BORDER };
 	enum class CompareOp : uint32_t { NONE, LESS, LESS_EQUAL, GREATER, GREATER_EQUAL, EQUAL, ALWAYS };
 	enum class BorderColor : uint32_t { TRANSPARENT_BLACK, OPAQUE_BLACK, OPAQUE_WHITE };
+	enum class PrimitiveTopology : uint32_t { TRIANGLE_LIST, TRIANGLE_STRIP, LINE_LIST, POINT_LIST };
+    enum class PolygonMode : uint32_t { FILL, LINE, POINT };
+    enum class CullMode : uint32_t { NONE, FRONT, BACK };
+    enum class FrontFace : uint32_t { CLOCKWISE, COUNTER_CLOCKWISE };
 
 	enum class VertexFormat : uint32_t {
 	    FLOAT, FLOAT2, FLOAT3, FLOAT4,
@@ -169,6 +173,23 @@ namespace Nevarea {
         bool present = false;
     };
 
+    struct PipelineDescription {
+        const char* vertex_shader = nullptr;
+        const char* fragment_shader = nullptr;
+
+        PrimitiveTopology topology = PrimitiveTopology::TRIANGLE_LIST;
+        PolygonMode polygon_mode = PolygonMode::FILL;
+        CullMode cull_mode = CullMode::NONE;
+        FrontFace front_face = FrontFace::COUNTER_CLOCKWISE;
+
+        bool depth_test = false;
+        bool depth_write = false;
+        CompareOp depth_compare = CompareOp::LESS_EQUAL;
+        Format depth_format = Format::COUNT;
+
+        bool blend_enable = false;
+    };
+
 	struct RendererCapabilities {
 		bool memory_priority = false;
 		bool pageable_memory = false;
@@ -215,7 +236,7 @@ namespace Nevarea {
 
 	NEVAREA_API const RendererCapabilities& renderer_get_capabilities(RenderContext renderer);
 
-	NEVAREA_API PipelineHandle renderer_create_pipeline(RenderContext renderer, const char* vert, const char* frag);
+	NEVAREA_API PipelineHandle renderer_create_pipeline(RenderContext renderer, const PipelineDescription& description);
 	NEVAREA_API PipelineHandle renderer_create_compute_pipeline(RenderContext renderer, const char* compute);
 	NEVAREA_API void renderer_destroy_pipeline(RenderContext renderer, PipelineHandle pipeline);
 
