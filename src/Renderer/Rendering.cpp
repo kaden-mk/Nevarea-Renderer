@@ -191,7 +191,7 @@ namespace Nevarea {
 		return empty;
 	}
 
-	PipelineHandle renderer_create_compute_pipeline(RenderContext context, const char* compute) {
+	Pipeline renderer_create_compute_pipeline(RenderContext context, const char* compute) {
 		RenderState* render_state = resolve(context);
 
 		switch (render_state->api) {
@@ -215,7 +215,7 @@ namespace Nevarea {
 		return {};
 	}
 
-	PipelineHandle renderer_create_pipeline(RenderContext context, const PipelineDescription& description) {
+	Pipeline renderer_create_pipeline(RenderContext context, const PipelineDescription& description) {
 		RenderState* render_state = resolve(context);
 
 		switch (render_state->api) {
@@ -239,7 +239,7 @@ namespace Nevarea {
 		return {};
 	}
 
-	void renderer_destroy_pipeline(RenderContext context, PipelineHandle pipeline) {
+	void renderer_destroy_pipeline(RenderContext context, Pipeline pipeline) {
 		RenderState* render_state = resolve(context);
 
 		switch (render_state->api) {
@@ -329,7 +329,7 @@ namespace Nevarea {
 		};
 	}
 
-	void renderer_submit_mesh(RenderContext context, Mesh mesh, PipelineHandle pipeline, const void* push, size_t push_size) {
+	void renderer_submit_mesh(RenderContext context, Mesh mesh, Pipeline pipeline, const void* push, size_t push_size) {
 		RenderState* render_state = resolve(context);
 
 		switch (render_state->api) {
@@ -342,7 +342,7 @@ namespace Nevarea {
 		}
 	}
 
-	void renderer_submit_mesh_range(RenderContext context, Mesh mesh, uint32_t first_index, uint32_t index_count, PipelineHandle pipeline, const void* push, size_t push_size) {
+	void renderer_submit_mesh_range(RenderContext context, Mesh mesh, uint32_t first_index, uint32_t index_count, Pipeline pipeline, const void* push, size_t push_size) {
     	RenderState* render_state = resolve(context);
 
     	switch (render_state->api) {
@@ -355,7 +355,7 @@ namespace Nevarea {
     	}
 	}
 
-	void renderer_dispatch_compute(RenderContext context, PipelineHandle pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, const void* push, size_t size, Image storage_target) {
+	void renderer_dispatch_compute(RenderContext context, Pipeline pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, const void* push, size_t size, Image storage_target) {
 		RenderState* render_state = resolve(context);
 
 		switch (render_state->api) {

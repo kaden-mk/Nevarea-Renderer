@@ -160,10 +160,12 @@ namespace Nevarea::Renderer {
 		color_blend.attachmentCount = 1;
 		color_blend.pAttachments = &blend_attachment;
 
+		VkFormat resolved_color = (desc.color_format == Format::COUNT) ? color_format : to_vk_format(desc.color_format);
+
 		VkPipelineRenderingCreateInfo rendering_info{};
 		rendering_info.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
 		rendering_info.colorAttachmentCount = 1;
-		rendering_info.pColorAttachmentFormats = &color_format;
+		rendering_info.pColorAttachmentFormats = &resolved_color;
 		rendering_info.depthAttachmentFormat = VK_FORMAT_D32_SFLOAT;
 
 		bool has_depth = desc.depth_format != Format::COUNT;

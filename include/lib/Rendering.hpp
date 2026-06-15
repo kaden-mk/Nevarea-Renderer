@@ -66,7 +66,7 @@ namespace Nevarea {
 		bool is_valid() const { return id != UINT32_MAX; }
 	};
 
-	struct PipelineHandle {
+	struct Pipeline {
 		uint32_t id = UINT32_MAX;
 		uint32_t generation = 0;
 		bool is_valid() const { return id != UINT32_MAX; }
@@ -177,6 +177,7 @@ namespace Nevarea {
         const char* vertex_shader = nullptr;
         const char* fragment_shader = nullptr;
 
+        Format color_format = Format::COUNT;
         PrimitiveTopology topology = PrimitiveTopology::TRIANGLE_LIST;
         PolygonMode polygon_mode = PolygonMode::FILL;
         CullMode cull_mode = CullMode::NONE;
@@ -236,9 +237,9 @@ namespace Nevarea {
 
 	NEVAREA_API const RendererCapabilities& renderer_get_capabilities(RenderContext renderer);
 
-	NEVAREA_API PipelineHandle renderer_create_pipeline(RenderContext renderer, const PipelineDescription& description);
-	NEVAREA_API PipelineHandle renderer_create_compute_pipeline(RenderContext renderer, const char* compute);
-	NEVAREA_API void renderer_destroy_pipeline(RenderContext renderer, PipelineHandle pipeline);
+	NEVAREA_API Pipeline renderer_create_pipeline(RenderContext renderer, const PipelineDescription& description);
+	NEVAREA_API Pipeline renderer_create_compute_pipeline(RenderContext renderer, const char* compute);
+	NEVAREA_API void renderer_destroy_pipeline(RenderContext renderer, Pipeline pipeline);
 
 	NEVAREA_API Image renderer_create_image(RenderContext renderer, const ImageDescription& description);
 	NEVAREA_API void renderer_destroy_image(RenderContext renderer, Image handle);
@@ -249,9 +250,9 @@ namespace Nevarea {
 	NEVAREA_API Sampler renderer_create_sampler(RenderContext renderer, const SamplerDescription& description);
 	NEVAREA_API void renderer_destroy_sampler(RenderContext renderer, Sampler sampler);
 
-	NEVAREA_API void renderer_submit_mesh(RenderContext renderer, Mesh mesh, PipelineHandle pipeline, const void* push = nullptr, size_t push_size = 0);
-	NEVAREA_API void renderer_submit_mesh_range(RenderContext renderer, Mesh mesh, uint32_t first_index, uint32_t index_count, PipelineHandle pipeline, const void* push = nullptr, size_t push_size = 0);
-	NEVAREA_API void renderer_dispatch_compute(RenderContext renderer, PipelineHandle pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, const void* push, size_t size, Image storage_target);
+	NEVAREA_API void renderer_submit_mesh(RenderContext renderer, Mesh mesh, Pipeline pipeline, const void* push = nullptr, size_t push_size = 0);
+	NEVAREA_API void renderer_submit_mesh_range(RenderContext renderer, Mesh mesh, uint32_t first_index, uint32_t index_count, Pipeline pipeline, const void* push = nullptr, size_t push_size = 0);
+	NEVAREA_API void renderer_dispatch_compute(RenderContext renderer, Pipeline pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, const void* push, size_t size, Image storage_target);
 	NEVAREA_API void renderer_present_image(RenderContext renderer, Image handle);
 	NEVAREA_API void renderer_upload_image(RenderContext renderer, Image handle, const void* pixels, size_t size);
 

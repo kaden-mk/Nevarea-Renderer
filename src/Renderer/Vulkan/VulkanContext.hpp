@@ -22,12 +22,12 @@ namespace Nevarea::Renderer {
     };
 
 	struct DrawBucket {
-		PipelineHandle pipeline;
+		Pipeline pipeline;
 		std::vector<DrawItem> items;
 	};
 
 	struct ComputeDispatch {
-		PipelineHandle pipeline;
+		Pipeline pipeline;
 		uint32_t groups_x, groups_y, groups_z;
 
 		uint8_t push_data[NEVAREA_MAX_PUSH_CONSTANTS_SIZE];
@@ -69,13 +69,13 @@ namespace Nevarea::Renderer {
 	void vulkan_context_draw(VulkanContext& context);
 	void vulkan_context_destroy(VulkanContext& context);
 
-	void vulkan_submit_mesh(VulkanContext& context, Mesh mesh, PipelineHandle pipeline, const void* push = nullptr, size_t push_size = 0);
-	void vulkan_submit_mesh_range(VulkanContext& context, Mesh mesh, uint32_t first_index, uint32_t index_count, PipelineHandle pipeline, const void* push = nullptr, size_t push_size = 0);
+	void vulkan_submit_mesh(VulkanContext& context, Mesh mesh, Pipeline pipeline, const void* push = nullptr, size_t push_size = 0);
+	void vulkan_submit_mesh_range(VulkanContext& context, Mesh mesh, uint32_t first_index, uint32_t index_count, Pipeline pipeline, const void* push = nullptr, size_t push_size = 0);
 
 	void vulkan_begin_pass(VulkanContext& context, PassData pass);
 	void vulkan_end_pass(VulkanContext& context);
 
-	PipelineHandle vulkan_pipeline_add(VulkanContext& context, const PipelineContext& pipeline);
-	PipelineContext& vulkan_pipeline_get(VulkanContext& context, PipelineHandle handle);
-	void vulkan_pipeline_remove(VulkanContext& context, PipelineHandle handle);
+	Pipeline vulkan_pipeline_add(VulkanContext& context, const PipelineContext& pipeline);
+	PipelineContext& vulkan_pipeline_get(VulkanContext& context, Pipeline handle);
+	void vulkan_pipeline_remove(VulkanContext& context, Pipeline handle);
 }
