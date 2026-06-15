@@ -109,10 +109,40 @@ namespace Nevarea {
 				return { render_state->vulkan.swapchain.extent.width, render_state->vulkan.swapchain.extent.height };
 			}
 
-			case Nevarea::RenderingAPI::NONE: break;
+			case RenderingAPI::NONE: break;
 		}
 
 		return { 0, 0 };
+	}
+
+	void renderer_begin_pass(RenderContext context, const RenderPassDescription& description) {
+	    RenderState* render_state = resolve(context);
+
+		switch (render_state->api) {
+		    case RenderingAPI::VULKAN: {
+				Renderer::PassData pass{};
+				pass.present = description.present;
+				pass.depth = description.depth;
+				pass.color.assign(description.color, description.color + description.color_count);
+				Renderer::vulkan_begin_pass(render_state->vulkan, pass);
+				break;
+			}
+
+			case RenderingAPI::NONE: break;
+		}
+	}
+
+	void renderer_end_pass(RenderContext context) {
+        RenderState* render_state = resolve(context);
+
+        switch (render_state->api) {
+            case RenderingAPI::VULKAN: {
+                Renderer::vulkan_end_pass(render_state->vulkan);
+                break;
+            }
+
+            case RenderingAPI::NONE: break;
+        }
 	}
 
 	bool renderer_swapchain_resized(RenderContext context) {

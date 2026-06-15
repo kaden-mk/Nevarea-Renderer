@@ -135,7 +135,8 @@ namespace Nevarea::Renderer {
 		VkPipelineStageFlags2 src_stage, VkAccessFlags2 src_access,
 		VkPipelineStageFlags2 dst_stage, VkAccessFlags2 dst_access)
 	{
-		transition_image(cmd, img.image, img.current_layout, new_layout, src_stage, src_access, dst_stage, dst_access);
+	    VkImageAspectFlags aspect = k_format_info[(uint32_t)img.format].aspect;
+		transition_image(cmd, img.image, img.current_layout, new_layout, src_stage, src_access, dst_stage, dst_access, aspect);
 		img.current_layout = new_layout;
 	}
 
@@ -147,7 +148,8 @@ namespace Nevarea::Renderer {
         if (caps.currentExtent.width == 0 || caps.currentExtent.height == 0) {
             context.compute_dispatches.clear();
             context.present_target = { UINT32_MAX, 0 };
-            for (DrawBucket& bucket : context.draw_buckets) bucket.items.clear();
+            context.passes.clear();
+
             return;
         }
 
@@ -219,7 +221,8 @@ namespace Nevarea::Renderer {
 				VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT, 0);
 
 			context.present_target = { UINT32_MAX, 0 };
-			for (DrawBucket& bucket : context.draw_buckets) bucket.items.clear();
+			context.passes.clear();
+
 			end_frame_present(context.frame_sync, context.swapchain, context.device, context.surface, context.window, cmd);
 			return;
 		}
@@ -240,8 +243,6 @@ namespace Nevarea::Renderer {
 			vkCmdPipelineBarrier2(cmd, &dependency);
 		}
 
-		begin_rendering(cmd, context.swapchain);
-
 		VkViewport viewport{};
 		viewport.width = static_cast<float>(context.swapchain.extent.width);
 		viewport.height = static_cast<float>(context.swapchain.extent.height);
@@ -250,40 +251,72 @@ namespace Nevarea::Renderer {
 
 		VkRect2D scissor{ {0, 0}, context.swapchain.extent };
 
-		vkCmdSetViewport(cmd, 0, 1, &viewport);
-		vkCmdSetScissor(cmd, 0, 1, &scissor);
+		bool any_present = false;
 
-		for (DrawBucket& bucket : context.draw_buckets) {
-			if (bucket.items.empty()) continue;
-
-			const PipelineContext& pipeline = vulkan_pipeline_get(context, bucket.pipeline);
-
-			vkCmdBindPipeline(cmd, pipeline.bind_point, pipeline.pipeline);
-			vkCmdBindDescriptorSets(cmd, pipeline.bind_point, pipeline.layout, 0, 1, &context.resource_manager.descriptor_set, 0, nullptr);
-
-			for (const DrawItem& item : bucket.items) {
-                MeshData& mesh = context.resource_manager.mesh_pool[item.mesh.id];
-
-                uint8_t push[NEVAREA_MAX_PUSH_CONSTANTS_SIZE];
-                if (item.push_size) memcpy(push, item.push_data, item.push_size);
-                memcpy(push, &mesh.vertex_address, sizeof(uint64_t));
-
-                vkCmdPushConstants(cmd, pipeline.layout,
-                     VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                     0, item.push_size, push);
-
-                if (mesh.index_buffer.is_valid()) {
-                    VkBuffer index_buffer = vulkan_get_buffer(context.resource_manager, mesh.index_buffer);
-                    vkCmdBindIndexBuffer(cmd, index_buffer, 0, VK_INDEX_TYPE_UINT32);
-                    vkCmdDrawIndexed(cmd, item.index_count, 1, item.first_index, item.vertex_offset, 0);
+		for (PassData& pass : context.passes) {
+		    for (size_t i = 0; i < pass.color.size(); i++) {
+                if (pass.present && i == 0) {
+                    transition_image(cmd, context.swapchain.images[context.swapchain.current_image_index],
+                        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                        VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0,
+                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
+                    any_present = true;
                 } else {
-                    vkCmdDraw(cmd, mesh.vertex_count, 1, 0, 0);
+                    transition_tracked(cmd, vulkan_get_image(context.resource_manager, { pass.color[i].image.id, pass.color[i].image.generation }),
+                        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                        VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
+                        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
                 }
             }
-			bucket.items.clear();
-		}
 
-		end_frame_rendering(context.frame_sync, context.swapchain, context.device, context.surface, context.window, cmd);
+    		if (pass.depth.image.is_valid()) {
+                transition_tracked(cmd, vulkan_get_image(context.resource_manager, { pass.depth.image.id, pass.depth.image.generation }),
+                    VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+                    VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0,
+                    VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+                    VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT);
+    		}
+
+    		begin_rendering(cmd, pass, context.swapchain, context.resource_manager);
+    		vkCmdSetViewport(cmd, 0, 1, &viewport);
+    		vkCmdSetScissor(cmd, 0, 1, &scissor);
+
+    		for (DrawBucket& bucket : pass.buckets) {
+    			if (bucket.items.empty()) continue;
+
+    			const PipelineContext& pipeline = vulkan_pipeline_get(context, bucket.pipeline);
+
+    			vkCmdBindPipeline(cmd, pipeline.bind_point, pipeline.pipeline);
+    			vkCmdBindDescriptorSets(cmd, pipeline.bind_point, pipeline.layout, 0, 1, &context.resource_manager.descriptor_set, 0, nullptr);
+
+    			for (const DrawItem& item : bucket.items) {
+                    MeshData& mesh = context.resource_manager.mesh_pool[item.mesh.id];
+
+                    uint8_t push[NEVAREA_MAX_PUSH_CONSTANTS_SIZE];
+                    if (item.push_size) memcpy(push, item.push_data, item.push_size);
+                    memcpy(push, &mesh.vertex_address, sizeof(uint64_t));
+
+                    vkCmdPushConstants(cmd, pipeline.layout,
+                        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                        0, item.push_size, push);
+
+                    if (mesh.index_buffer.is_valid()) {
+                        VkBuffer index_buffer = vulkan_get_buffer(context.resource_manager, mesh.index_buffer);
+                        vkCmdBindIndexBuffer(cmd, index_buffer, 0, VK_INDEX_TYPE_UINT32);
+                        vkCmdDrawIndexed(cmd, item.index_count, 1, item.first_index, item.vertex_offset, 0);
+                    } else {
+                        vkCmdDraw(cmd, mesh.vertex_count, 1, 0, 0);
+                    }
+                }
+    			bucket.items.clear();
+    		}
+
+            vkCmdEndRendering(cmd);
+		}
+		context.passes.clear();
+
+		end_frame_rendering(context.frame_sync, context.swapchain, context.device,
+	        context.surface, context.window, cmd, any_present);
 	}
 
 	void vulkan_context_destroy(VulkanContext& context)
@@ -313,8 +346,12 @@ namespace Nevarea::Renderer {
 	}
 
 	static DrawBucket& get_bucket(VulkanContext& context, PipelineHandle pipeline) {
-        if (pipeline.id >= context.draw_buckets.size()) context.draw_buckets.resize(pipeline.id + 1);
-        DrawBucket& bucket = context.draw_buckets[pipeline.id];
+    	NEVAREA_ASSERT(context.current_pass_index >= 0, "RENDERER", "submit_mesh called outside begin_pass/end_pass");
+
+        PassData& pass = context.passes[context.current_pass_index];
+        if (pipeline.id >= pass.buckets.size()) pass.buckets.resize(pipeline.id + 1);
+
+        DrawBucket& bucket = pass.buckets[pipeline.id];
         bucket.pipeline = pipeline;
         return bucket;
     }
@@ -348,6 +385,15 @@ namespace Nevarea::Renderer {
             memcpy(item.push_data, push, push_size);
         }
         get_bucket(context, pipeline).items.push_back(item);
+	}
+
+	void vulkan_begin_pass(VulkanContext& context, PassData pass) {
+	    context.passes.push_back(pass);
+		context.current_pass_index = (int32_t)context.passes.size() - 1;
+	}
+
+	void vulkan_end_pass(VulkanContext& context) {
+	    context.current_pass_index = -1;
 	}
 
 	PipelineHandle vulkan_pipeline_add(VulkanContext &context, const PipelineContext &pipeline) {

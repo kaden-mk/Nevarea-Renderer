@@ -7,6 +7,7 @@
 #include "VulkanSwapchain.hpp"
 #include "VulkanResourceManager.hpp"
 #include "VulkanPipeline.hpp"
+#include "lib/Rendering.hpp"
 
 #include <vk_mem_alloc.h>
 
@@ -34,6 +35,13 @@ namespace Nevarea::Renderer {
 		ImageHandle target_image = { UINT32_MAX, 0 };
 	};
 
+	struct PassData {
+	    bool present = false;
+		std::vector<ColorAttachment> color;
+		DepthAttachment depth;
+		std::vector<DrawBucket> buckets;
+	};
+
 	struct VulkanContext {
 		VkInstance instance;
 		VkDebugUtilsMessengerEXT debug_messenger;
@@ -51,7 +59,9 @@ namespace Nevarea::Renderer {
 		std::vector<uint32_t> pipeline_generations;
 		std::vector<uint32_t> pipeline_free_list;
 
-		std::vector<DrawBucket> draw_buckets;
+		std::vector<PassData> passes;
+		int32_t current_pass_index = -1;
+
 		std::vector<ComputeDispatch> compute_dispatches;
 	};
 
@@ -61,6 +71,9 @@ namespace Nevarea::Renderer {
 
 	void vulkan_submit_mesh(VulkanContext& context, Mesh mesh, PipelineHandle pipeline, const void* push = nullptr, size_t push_size = 0);
 	void vulkan_submit_mesh_range(VulkanContext& context, Mesh mesh, uint32_t first_index, uint32_t index_count, PipelineHandle pipeline, const void* push = nullptr, size_t push_size = 0);
+
+	void vulkan_begin_pass(VulkanContext& context, PassData pass);
+	void vulkan_end_pass(VulkanContext& context);
 
 	PipelineHandle vulkan_pipeline_add(VulkanContext& context, const PipelineContext& pipeline);
 	PipelineContext& vulkan_pipeline_get(VulkanContext& context, PipelineHandle handle);

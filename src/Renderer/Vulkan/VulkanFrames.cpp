@@ -1,5 +1,5 @@
 #include "VulkanFrames.hpp"
-#include "VulkanResourceManager.hpp"
+#include "lib/Rendering.hpp"
 
 namespace Nevarea::Renderer {
 	static NEVAREA_FORCE_INLINE VkCommandBuffer prepare_command_buffer(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window) {
@@ -20,6 +20,25 @@ namespace Nevarea::Renderer {
 		VK_ASSERT(vkResetCommandBuffer(cmd, 0));
 
 		return cmd;
+	}
+
+	static VkAttachmentLoadOp to_vk_load_op(LoadOp op) {
+	    switch (op) {
+			case LoadOp::LOAD: return VK_ATTACHMENT_LOAD_OP_LOAD;
+			case LoadOp::CLEAR: return VK_ATTACHMENT_LOAD_OP_CLEAR;
+			case LoadOp::DONT_CARE: return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		}
+
+		return VK_ATTACHMENT_LOAD_OP_NONE;
+	}
+
+	static VkAttachmentStoreOp to_vk_store_op(StoreOp op) {
+	    switch (op) {
+			case StoreOp::STORE: return VK_ATTACHMENT_STORE_OP_STORE;
+			case StoreOp::DONT_CARE: return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		}
+
+	    return VK_ATTACHMENT_STORE_OP_NONE;
 	}
 
 	VkCommandBuffer begin_frame(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window) {
@@ -47,26 +66,44 @@ namespace Nevarea::Renderer {
 		return cmd;
 	}
 
-	void begin_rendering(VkCommandBuffer cmd, SwapchainContext& swapchain) {
-		transition_image(cmd, swapchain.images[swapchain.current_image_index],
-			VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			VK_PIPELINE_STAGE_2_NONE, 0,
-			VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
+	void begin_rendering(VkCommandBuffer cmd, const PassData& pass, SwapchainContext& swapchain, ResourceManager& resources) {
+		VkRenderingAttachmentInfo color_attachments[NEVAREA_MAX_COLOR_ATTACHMENTS]{};
 
-		VkRenderingAttachmentInfo color_attachment{};
-		color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
-		color_attachment.imageView = swapchain.image_views[swapchain.current_image_index];
-		color_attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-		color_attachment.clearValue = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
+		NEVAREA_ASSERT(pass.color.size() <= NEVAREA_MAX_COLOR_ATTACHMENTS, "VULKAN FRAMES",
+		    "the maximum amount of color attachments has been exceeded!");
+
+		for (size_t i = 0; i < (uint32_t)pass.color.size(); i++) {
+		    const ColorAttachment& att = pass.color[i];
+
+            VkRenderingAttachmentInfo color_attachment{};
+      		color_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+            color_attachment.imageView = (pass.present && i == 0) ? swapchain.image_views[swapchain.current_image_index] : vulkan_get_image(resources, { att.image.id, att.image.generation }).view;
+            color_attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            color_attachment.loadOp = to_vk_load_op(att.load);
+            color_attachment.storeOp = to_vk_store_op(att.store);
+            color_attachment.clearValue = { { { att.clear[0], att.clear[1], att.clear[2], att.clear[3] } } };
+
+            color_attachments[i] = color_attachment;
+		}
 
 		VkRenderingInfo rendering_info{};
 		rendering_info.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
 		rendering_info.renderArea = { {0, 0}, swapchain.extent };
 		rendering_info.layerCount = 1;
-		rendering_info.colorAttachmentCount = 1;
-		rendering_info.pColorAttachments = &color_attachment;
+		rendering_info.colorAttachmentCount = (uint32_t)pass.color.size();
+		rendering_info.pColorAttachments = color_attachments;
+
+		if (pass.depth.image.is_valid()) {
+            VkRenderingAttachmentInfo depth_attachment{};
+            depth_attachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+            depth_attachment.imageView = vulkan_get_image(resources, { pass.depth.image.id, pass.depth.image.generation }).view;
+            depth_attachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+            depth_attachment.loadOp = to_vk_load_op(pass.depth.load);
+            depth_attachment.storeOp = to_vk_store_op(pass.depth.store);
+            depth_attachment.clearValue.depthStencil = { pass.depth.clear, 0 };
+
+            rendering_info.pDepthAttachment = &depth_attachment;
+		}
 
 		vkCmdBeginRendering(cmd, &rendering_info);
 	}
@@ -138,44 +175,44 @@ namespace Nevarea::Renderer {
 		}
 	}
 
-	void end_frame_rendering(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkCommandBuffer cmd)
+	void end_frame_rendering(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkCommandBuffer cmd, bool any_present)
 	{
-		vkCmdEndRendering(cmd);
+	    if (any_present) {
+    		VkImageMemoryBarrier2 end_barrier{};
+    		end_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+    		end_barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+    		end_barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+    		end_barrier.dstStageMask = VK_PIPELINE_STAGE_2_NONE;
+    		end_barrier.dstAccessMask = 0;
+    		end_barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    		end_barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    		end_barrier.image = swapchain.images[swapchain.current_image_index];
+    		end_barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
 
-		VkImageMemoryBarrier2 end_barrier{};
-		end_barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-		end_barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-		end_barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
-		end_barrier.dstStageMask = VK_PIPELINE_STAGE_2_NONE;
-		end_barrier.dstAccessMask = 0;
-		end_barrier.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		end_barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		end_barrier.image = swapchain.images[swapchain.current_image_index];
-		end_barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+    		VkDependencyInfo dependency_info{};
+    		dependency_info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+    		dependency_info.dependencyFlags = 0;
+    		dependency_info.memoryBarrierCount = 0;
+    		dependency_info.pMemoryBarriers = NULL;
+    		dependency_info.bufferMemoryBarrierCount = 0;
+    		dependency_info.pBufferMemoryBarriers = NULL;
+    		dependency_info.imageMemoryBarrierCount = 1;
+    		dependency_info.pImageMemoryBarriers = &end_barrier;
 
-		VkDependencyInfo dependency_info{};
-		dependency_info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-		dependency_info.dependencyFlags = 0;
-		dependency_info.memoryBarrierCount = 0;
-		dependency_info.pMemoryBarriers = NULL;
-		dependency_info.bufferMemoryBarrierCount = 0;
-		dependency_info.pBufferMemoryBarriers = NULL;
-		dependency_info.imageMemoryBarrierCount = 1;
-		dependency_info.pImageMemoryBarriers = &end_barrier;
-
-		vkCmdPipelineBarrier2(cmd, &dependency_info);
+    		vkCmdPipelineBarrier2(cmd, &dependency_info);
+		}
 
 		VK_ASSERT(vkEndCommandBuffer(cmd));
 
 		handle_queues(frame, swapchain, device, surface, window, cmd, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT);
-
 		frame.current_frame = (frame.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
 
 	void transition_image(VkCommandBuffer cmd, VkImage image,
 		VkImageLayout old_layout, VkImageLayout new_layout,
 		VkPipelineStageFlags2 src_stage, VkAccessFlags2 src_access,
-		VkPipelineStageFlags2 dst_stage, VkAccessFlags2 dst_access)
+		VkPipelineStageFlags2 dst_stage, VkAccessFlags2 dst_access,
+        VkImageAspectFlags aspect)
 	{
 		VkImageMemoryBarrier2 barrier{};
 		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
@@ -186,7 +223,7 @@ namespace Nevarea::Renderer {
 		barrier.oldLayout = old_layout;
 		barrier.newLayout = new_layout;
 		barrier.image = image;
-		barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+		barrier.subresourceRange = { aspect, 0, 1, 0, 1 };
 
 		VkDependencyInfo dep{};
 		dep.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;

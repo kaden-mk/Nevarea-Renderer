@@ -32,6 +32,9 @@ namespace Nevarea {
         COUNT
     };
 
+    enum class LoadOp : uint32_t { LOAD, CLEAR, DONT_CARE };
+    enum class StoreOp : uint32_t { STORE, DONT_CARE };
+
 	namespace ImageUsage {
 		enum : uint32_t {
 			STORAGE = 1u << 0,
@@ -39,6 +42,7 @@ namespace Nevarea {
 			TRANSFER_SRC = 1u << 2,
 			TRANSFER_DST = 1u << 3,
 			COLOR_TARGET = 1u << 4,
+			DEPTH_STENCIL_TARGET = 1u << 5,
 		};
 	}
 
@@ -144,6 +148,27 @@ namespace Nevarea {
 		bool is_valid() { return id != UINT32_MAX; };
 	};
 
+    struct ColorAttachment {
+        Image image;
+        LoadOp load = LoadOp::CLEAR;
+        StoreOp store = StoreOp::STORE;
+        float clear[4] = { 0.f, 0.f, 0.f, 1.f };
+    };
+
+    struct DepthAttachment {
+        Image image;
+        LoadOp load = LoadOp::CLEAR;
+        StoreOp store = StoreOp::STORE;
+        float clear = 1.0f;
+    };
+
+    struct RenderPassDescription {
+        const ColorAttachment* color = nullptr;
+        uint32_t color_count = 0;
+        DepthAttachment depth;
+        bool present = false;
+    };
+
 	struct RendererCapabilities {
 		bool memory_priority = false;
 		bool pageable_memory = false;
@@ -180,6 +205,9 @@ namespace Nevarea {
 
 	NEVAREA_API void renderer_hook_window(RenderContext renderer, WindowHandle window);
 	NEVAREA_API void renderer_draw(RenderContext renderer);
+
+	NEVAREA_API void renderer_begin_pass(RenderContext renderer, const RenderPassDescription& description);
+	NEVAREA_API void renderer_end_pass(RenderContext renderer);
 
 	NEVAREA_API NvWinExtent renderer_get_swapchain_extent(RenderContext renderer);
 	NEVAREA_API bool renderer_swapchain_resized(RenderContext renderer);
