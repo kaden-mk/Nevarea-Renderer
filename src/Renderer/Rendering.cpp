@@ -137,6 +137,61 @@ namespace Nevarea {
         }
 	}
 
+	void renderer_request_device_extensions(RenderContext context, const char* const* names, uint32_t count) {
+        RenderState* render_state = resolve(context);
+
+        switch (render_state->api) {
+            case RenderingAPI::VULKAN: {
+                for (size_t i = 0; i < (size_t)count; i++)
+                    render_state->vulkan.device.requested_extensions.push_back(names[i]);
+
+                break;
+            }
+
+            case RenderingAPI::NONE: break;
+        }
+	}
+
+	bool renderer_extension_supported(RenderContext renderer, const char* name) {
+        RenderState* render_state = resolve(renderer);
+
+        switch (render_state->api) {
+            case RenderingAPI::VULKAN: {
+                VkPhysicalDevice device = render_state->vulkan.device.physical_device;
+
+                uint32_t count = 0;
+                vkEnumerateDeviceExtensionProperties(device, nullptr, &count, nullptr);
+                std::vector<VkExtensionProperties> props(count);
+                vkEnumerateDeviceExtensionProperties(device, nullptr, &count, props.data());
+
+                for (const VkExtensionProperties& extension : props) if (strcmp(extension.extensionName, name) == 0) return true;
+
+                return false;
+            }
+
+            case RenderingAPI::NONE: break;
+        }
+
+        return false;
+	}
+
+	bool renderer_extension_enabled(RenderContext renderer, const char* name) {
+        RenderState* render_state = resolve(renderer);
+
+        switch (render_state->api) {
+            case RenderingAPI::VULKAN: {
+                for (const char* extension : render_state->vulkan.device.enabled_extensions)
+                    if (strcmp(extension, name) == 0) return true;
+
+                return false;
+            }
+
+            case RenderingAPI::NONE: break;
+        }
+
+        return false;
+	}
+
 	bool renderer_swapchain_resized(RenderContext context) {
 	    RenderState* render_state = resolve(context);
 
@@ -167,20 +222,6 @@ namespace Nevarea {
 			case RenderingAPI::NONE:
 				break;
 		}
-	}
-
-	const RendererCapabilities& renderer_get_capabilities(RenderContext context) {
-		static const RendererCapabilities empty{};
-		RenderState* render_state = resolve(context);
-
-		switch (render_state->api) {
-			case RenderingAPI::VULKAN:
-				return render_state->vulkan.device.capabilities;
-
-			case RenderingAPI::NONE:
-				return empty;
-		}
-		return empty;
 	}
 
 	Pipeline renderer_create_compute_pipeline(RenderContext context, const char* compute) {

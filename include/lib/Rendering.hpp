@@ -191,37 +191,6 @@ namespace Nevarea {
         bool blend_enable = false;
     };
 
-	struct RendererCapabilities {
-		bool memory_priority = false;
-		bool pageable_memory = false;
-
-		bool present_id = false;
-		bool present_wait = false;
-		bool present_id2 = false;
-		bool present_wait2 = false;
-		bool swapchain_maintenance1 = false;
-
-		bool descriptor_buffer = false;
-		bool descriptor_heap = false;
-		bool mutable_descriptor_type = false;
-		bool shader_object = false;
-		bool extended_dynamic_state3 = false;
-
-		bool calibrated_timestamps = false;
-		bool shader_module_identifier = false;
-
-		bool ray_query = false;
-		bool ray_tracing_pipeline = false;
-		bool acceleration_structure = false;
-		bool ray_tracing_position_fetch = false;
-		bool opacity_micromap = false;
-
-		bool mesh_shader = false;
-		bool variable_rate_shading = false;
-		bool cooperative_matrix = false;
-		bool device_generated_commands = false;
-	};
-
 	NEVAREA_API RenderContext renderer_create(RenderingAPI api);
 	NEVAREA_API void renderer_destroy(RenderContext renderer);
 
@@ -231,11 +200,13 @@ namespace Nevarea {
 	NEVAREA_API void renderer_begin_pass(RenderContext renderer, const RenderPassDescription& description);
 	NEVAREA_API void renderer_end_pass(RenderContext renderer);
 
+	NEVAREA_API void renderer_request_device_extensions(RenderContext renderer, const char* const* names, uint32_t count);
+	NEVAREA_API bool renderer_extension_supported(RenderContext renderer, const char* name);
+	NEVAREA_API bool renderer_extension_enabled(RenderContext renderer, const char* name);
+
 	NEVAREA_API NvWinExtent renderer_get_swapchain_extent(RenderContext renderer);
 	NEVAREA_API bool renderer_swapchain_resized(RenderContext renderer);
 	NEVAREA_API void renderer_set_present_mode(RenderContext renderer, PresentMode mode);
-
-	NEVAREA_API const RendererCapabilities& renderer_get_capabilities(RenderContext renderer);
 
 	NEVAREA_API Pipeline renderer_create_pipeline(RenderContext renderer, const PipelineDescription& description);
 	NEVAREA_API Pipeline renderer_create_compute_pipeline(RenderContext renderer, const char* compute);

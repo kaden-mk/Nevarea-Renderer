@@ -2,28 +2,50 @@
 
 #include "Core/n_pch.hpp"
 #include "lib/Rendering.hpp"
+#include <wingdi.h>
 
 namespace Nevarea::Renderer {
+    struct DeviceCapabilities {
+	    bool memory_priority = false;
+		bool pageable_memory = false;
+		bool present_id = false;
+		bool present_wait = false;
+		bool present_id2 = false;
+		bool present_wait2 = false;
+		bool swapchain_maintenance1 = false;
+		bool descriptor_buffer = false;
+		bool descriptor_heap = false;
+		bool mutable_descriptor_type = false;
+		bool shader_object = false;
+		bool extended_dynamic_state3 = false;
+		bool calibrated_timesteps = false;
+		bool shader_module_identifier = false;
+		bool acceleration_structure = false;
+	};
+
 	struct DeviceContext {
 		VkPhysicalDevice physical_device;
 		VkDevice device;
+		PFN_vkWaitForPresentKHR wait_for_present = nullptr;
 
 		VkQueue graphics_queue;
 		VkQueue present_queue;
 		VkQueue compute_queue;
 		VkQueue transfer_queue;
 
+		DeviceCapabilities capabilities;
+
+		bool device_lost = false;
+
 		uint32_t graphics_family_index;
 		uint32_t compute_family_index;
 		uint32_t transfer_family_index;
 		uint32_t present_family_index;
 
-		bool device_lost = false;
+		std::vector<const char*> enabled_extensions;
+		std::vector<const char*> requested_extensions;
 
-		PFN_vkWaitForPresentKHR wait_for_present = nullptr;
-
-		RendererCapabilities capabilities;
-		std::vector<const char*> enabled_optional_extensions;
+		const void* user_feature_chain = nullptr;
 	};
 
 	struct QueueFamilyIndices {

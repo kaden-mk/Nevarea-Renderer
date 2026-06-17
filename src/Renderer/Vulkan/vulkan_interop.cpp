@@ -47,4 +47,9 @@ namespace Nevarea {
         if (out_last_value) *out_last_value = frame.timeline_value;
         return frame.timeline;
     }
+
+    void renderer_vk_request_features(RenderContext context, const void* feature_chain) {
+        Renderer::VulkanContext& vk = resolve(context)->vulkan;
+        vk.device.user_feature_chain = feature_chain;
+    }
 }

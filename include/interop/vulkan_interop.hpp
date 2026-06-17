@@ -37,4 +37,6 @@ namespace Nevarea {
 
     NEVAREA_API void renderer_vk_immediate_submit(RenderContext context, void (*record)(VkCommandBuffer cmd, void* user), void* user);
     NEVAREA_API VkSemaphore renderer_vk_timeline(RenderContext context, uint64_t* out_last_value);
+
+    NEVAREA_API void renderer_vk_request_features(RenderContext context, const void* feature_chain);
 }

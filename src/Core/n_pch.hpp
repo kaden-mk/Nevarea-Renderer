@@ -10,6 +10,7 @@
 #include <fstream>
 #include <functional>
 #include <limits>
+#include <cstring>
 
 #include "lib/Core.hpp"
 

@@ -51,28 +51,28 @@ namespace Nevarea::Renderer {
 		return indices;
 	}
 
-	static std::set<std::string> get_available_extensions(VkPhysicalDevice device) {
+	static std::vector<std::string> get_available_extensions(VkPhysicalDevice device) {
 		uint32_t extension_count = 0;
 		VK_CHECK(vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count, nullptr));
 
 		std::vector<VkExtensionProperties> extensions(extension_count);
 		VK_CHECK(vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count, extensions.data()));
 
-		std::set<std::string> available;
+		std::vector<std::string> available;
 		for (const auto& extension : extensions)
-			available.insert(extension.extensionName);
+			available.push_back(extension.extensionName);
 
 		return available;
 	}
 
 	static bool check_required_extensions_supported(VkPhysicalDevice device) {
-		std::set<std::string> available = get_available_extensions(device);
+        std::vector<std::string> available = get_available_extensions(device);
 
-		for (const char* required : required_device_extensions)
-			if (available.find(required) == available.end()) return false;
+        for (const char* required : required_device_extensions)
+            if (std::find(available.begin(), available.end(), required) == available.end()) return false;
 
-		return true;
-	}
+        return true;
+    }
 
 	static bool is_swapchain_adequate(VkPhysicalDevice device, VkSurfaceKHR surface)
 	{
@@ -134,13 +134,21 @@ namespace Nevarea::Renderer {
 	}
 
 	static void query_capabilities(DeviceContext& device_context) {
-		std::set<std::string> available = get_available_extensions(device_context.physical_device);
+        std::vector<std::string> available = get_available_extensions(device_context.physical_device);
+        auto has = [&](const char* name) {
+            for (const std::string& extension : available) if (extension == name) return true;
+            return false;
+        };
 
-		auto has = [&](const char* name) { return available.find(name) != available.end(); };
+        auto add = [&](const char* name) {
+            for (const char* extension : device_context.enabled_extensions) if (strcmp(extension, name) == 0) return;
+            device_context.enabled_extensions.push_back(name);
+        };
 
-		device_context.enabled_optional_extensions.clear();
-		for (const char* extension : optional_device_extensions)
-			if (has(extension)) device_context.enabled_optional_extensions.push_back(extension);
+		device_context.enabled_extensions.clear();
+		for (const char* extension : required_device_extensions) add(extension);
+		for (const char* extension : optional_device_extensions) if (has(extension)) add(extension);
+		for (const char* extension : device_context.requested_extensions) if (has(extension)) add(extension);
 
 		device_context.capabilities = {};
 		device_context.capabilities.memory_priority = has(VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME);
@@ -155,18 +163,7 @@ namespace Nevarea::Renderer {
 		device_context.capabilities.mutable_descriptor_type = has(VK_EXT_MUTABLE_DESCRIPTOR_TYPE_EXTENSION_NAME);
 		device_context.capabilities.shader_object = has(VK_EXT_SHADER_OBJECT_EXTENSION_NAME);
 		device_context.capabilities.extended_dynamic_state3 = has(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME);
-		device_context.capabilities.calibrated_timestamps = has(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME);
 		device_context.capabilities.shader_module_identifier = has(VK_EXT_SHADER_MODULE_IDENTIFIER_EXTENSION_NAME);
-
-		device_context.capabilities.ray_query = has(VK_KHR_RAY_QUERY_EXTENSION_NAME);
-		device_context.capabilities.ray_tracing_pipeline = has(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
-		device_context.capabilities.acceleration_structure = has(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
-		device_context.capabilities.ray_tracing_position_fetch = has(VK_KHR_RAY_TRACING_POSITION_FETCH_EXTENSION_NAME);
-		device_context.capabilities.opacity_micromap = has(VK_EXT_OPACITY_MICROMAP_EXTENSION_NAME);
-		device_context.capabilities.mesh_shader = has(VK_EXT_MESH_SHADER_EXTENSION_NAME);
-		device_context.capabilities.variable_rate_shading = has(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
-		device_context.capabilities.cooperative_matrix = has(VK_KHR_COOPERATIVE_MATRIX_EXTENSION_NAME);
-		device_context.capabilities.device_generated_commands = has(VK_EXT_DEVICE_GENERATED_COMMANDS_EXTENSION_NAME);
 	}
 
 	static uint32_t score_device(VkPhysicalDevice device) {
@@ -312,8 +309,6 @@ namespace Nevarea::Renderer {
 		VkPhysicalDeviceDescriptorBufferFeaturesEXT desc_buf{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT };
 		VkPhysicalDeviceDescriptorHeapFeaturesEXT desc_heap{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_FEATURES_EXT };
 		VkPhysicalDeviceAccelerationStructureFeaturesKHR accel_features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR };
-		VkPhysicalDeviceRayQueryFeaturesKHR rq_features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR };
-		VkPhysicalDeviceRayTracingPipelineFeaturesKHR rt_pipe_features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR };
 
 		void* opt_head = nullptr;
 
@@ -379,23 +374,7 @@ namespace Nevarea::Renderer {
 			accel_features.pNext = opt_head;
 			opt_head = &accel_features;
 		}
-		if (device_context->capabilities.ray_query) {
-			rq_features.rayQuery = VK_TRUE;
-			rq_features.pNext = opt_head;
-			opt_head = &rq_features;
-		}
-		if (device_context->capabilities.ray_tracing_pipeline) {
-			rt_pipe_features.rayTracingPipeline = VK_TRUE;
-			rt_pipe_features.pNext = opt_head;
-			opt_head = &rt_pipe_features;
-		}
-
 		features12.pNext = opt_head;
-
-		std::vector<const char*> enabled_extensions;
-		enabled_extensions.reserve(required_device_extensions.size() + device_context->enabled_optional_extensions.size());
-		for (const char* extension : required_device_extensions) enabled_extensions.push_back(extension);
-		for (const char* extension : device_context->enabled_optional_extensions) enabled_extensions.push_back(extension);
 
 		VkDeviceCreateInfo create_info{};
 		create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -403,10 +382,16 @@ namespace Nevarea::Renderer {
 		create_info.queueCreateInfoCount = static_cast<uint32_t>(queue_create_infos.size());
 		create_info.pQueueCreateInfos = queue_create_infos.data();
 		create_info.pEnabledFeatures = nullptr;
-		create_info.enabledExtensionCount = static_cast<uint32_t>(enabled_extensions.size());
-		create_info.ppEnabledExtensionNames = enabled_extensions.data();
+		create_info.enabledExtensionCount   = (uint32_t)device_context->enabled_extensions.size();
+		create_info.ppEnabledExtensionNames = device_context->enabled_extensions.data();
 		create_info.enabledLayerCount = 0;
 		create_info.ppEnabledLayerNames = nullptr;
+
+		if (device_context->user_feature_chain) {
+            VkBaseOutStructure* tail = reinterpret_cast<VkBaseOutStructure*>(&features2);
+            while (tail->pNext) tail = tail->pNext;
+            tail->pNext = (VkBaseOutStructure*)device_context->user_feature_chain;
+        }
 
 		VK_ASSERT(vkCreateDevice(device_context->physical_device, &create_info, nullptr, &device_context->device));
 
