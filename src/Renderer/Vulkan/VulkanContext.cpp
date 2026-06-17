@@ -149,6 +149,7 @@ namespace Nevarea::Renderer {
             context.compute_dispatches.clear();
             context.present_target = { UINT32_MAX, 0 };
             context.passes.clear();
+            context.interop_records.clear();
 
             return;
         }
@@ -222,6 +223,7 @@ namespace Nevarea::Renderer {
 
 			context.present_target = { UINT32_MAX, 0 };
 			context.passes.clear();
+			context.interop_records.clear();
 
 			end_frame_present(context.frame_sync, context.swapchain, context.device, context.surface, context.window, cmd);
 			return;
@@ -253,6 +255,13 @@ namespace Nevarea::Renderer {
 
 		bool any_present = false;
 
+		auto fire_interop = [&](uint32_t pass_count) {
+            for (InteropRecord& record : context.interop_records)
+                if (record.after == pass_count) record.fn(cmd, record.user);
+        };
+
+		uint32_t pass_index = 0;
+		fire_interop(pass_index);
 		for (PassData& pass : context.passes) {
 		    for (size_t i = 0; i < pass.color.size(); i++) {
                 if (pass.present && i == 0) {
@@ -325,8 +334,11 @@ namespace Nevarea::Renderer {
                     VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
                     VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_SAMPLED_READ_BIT);
             }
+
+            fire_interop(++pass_index);
 		}
 		context.passes.clear();
+		context.interop_records.clear();
 
 		end_frame_rendering(context.frame_sync, context.swapchain, context.device,
 	        context.surface, context.window, cmd, any_present);

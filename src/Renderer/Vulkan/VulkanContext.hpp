@@ -42,6 +42,12 @@ namespace Nevarea::Renderer {
 		std::vector<DrawBucket> buckets;
 	};
 
+	struct InteropRecord {
+	    void (*fn)(VkCommandBuffer cmd, void* user);
+		void* user;
+		uint32_t after;
+	};
+
 	struct VulkanContext {
 		VkInstance instance;
 		VkDebugUtilsMessengerEXT debug_messenger;
@@ -54,6 +60,8 @@ namespace Nevarea::Renderer {
 		SwapchainContext swapchain;
 		FrameContext frame_sync;
 		ImageHandle present_target = { UINT32_MAX, 0 };
+
+		std::vector<InteropRecord> interop_records;
 
 		std::vector<PipelineContext> pipelines;
 		std::vector<uint32_t> pipeline_generations;

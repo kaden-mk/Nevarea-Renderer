@@ -48,6 +48,11 @@ namespace Nevarea {
         return frame.timeline;
     }
 
+    void renderer_vk_record_inline(RenderContext context, void (*fn)(VkCommandBuffer cmd, void* user), void* user) {
+        Renderer::VulkanContext& vk = resolve(context)->vulkan;
+        vk.interop_records.push_back({ fn, user, (uint32_t)vk.passes.size() });
+    }
+
     void renderer_vk_request_features(RenderContext context, const void* feature_chain) {
         Renderer::VulkanContext& vk = resolve(context)->vulkan;
         vk.device.user_feature_chain = feature_chain;

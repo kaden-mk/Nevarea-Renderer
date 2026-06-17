@@ -421,7 +421,7 @@ namespace Nevarea::Renderer {
             desc_image.imageView = img.view;
             desc_image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-            VkWriteDescriptorSet write{ };
+            VkWriteDescriptorSet write{};
             write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             write.dstSet = manager.descriptor_set;
             write.dstBinding = 0;
@@ -430,6 +430,17 @@ namespace Nevarea::Renderer {
             write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
             write.pImageInfo = &desc_image;
             vkUpdateDescriptorSets(manager.device, 1, &write, 0, nullptr);
+        }
+
+		if (usage & VK_IMAGE_USAGE_STORAGE_BIT) {
+            vulkan_immediate_submit(manager, [&](VkCommandBuffer cmd) {
+                transition_image(cmd, img.image,
+                    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
+                    VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0,
+                    VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                    VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT);
+            });
+            manager.image_pool[index].current_layout = VK_IMAGE_LAYOUT_GENERAL;
         }
 
 		return { index, manager.image_generation_pool[index] };
