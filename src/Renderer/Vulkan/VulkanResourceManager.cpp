@@ -5,29 +5,8 @@
 
 #include "lib/Core.hpp"
 #include "lib/Rendering.hpp"
-#include <cstdint>
 
 namespace Nevarea::Renderer {
-    static VkBufferUsageFlags to_vk_buffer_usage(uint32_t usage) {
-		VkBufferUsageFlags flags = 0;
-		if (usage & BufferUsage::STORAGE) flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-		if (usage & BufferUsage::UNIFORM) flags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-		if (usage & BufferUsage::INDEX) flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-		if (usage & BufferUsage::INDIRECT) flags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
-		if (usage & BufferUsage::TRANSFER_SRC) flags |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-		if (usage & BufferUsage::TRANSFER_DST) flags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-		return flags;
-	}
-
-	static VmaMemoryUsage to_vma_memory(MemoryLocation location) {
-		switch (location) {
-			case MemoryLocation::GPU_ONLY: return VMA_MEMORY_USAGE_GPU_ONLY;
-			case MemoryLocation::CPU_TO_GPU: return VMA_MEMORY_USAGE_CPU_TO_GPU;
-			case MemoryLocation::GPU_TO_CPU: return VMA_MEMORY_USAGE_GPU_TO_CPU;
-		}
-		return VMA_MEMORY_USAGE_CPU_TO_GPU;
-	}
-
 	static_assert(sizeof(k_format_info) / sizeof(FormatInfo) == (size_t)Format::COUNT,
 		"k_format_info is out of sync with the public Format enum");
 
@@ -35,6 +14,7 @@ namespace Nevarea::Renderer {
 		return k_format_info[static_cast<uint32_t>(format)];
 	}
 
+	// TODO: place this in vulkantranslate
 	VkFormat to_vk_format(Format format) {
 		return format_info(format).vk;
 	}
@@ -44,17 +24,6 @@ namespace Nevarea::Renderer {
 		uint32_t bw = (width  + info.block_width  - 1) / info.block_width;
 		uint32_t bh = (height + info.block_height - 1) / info.block_height;
 		return static_cast<size_t>(bw) * bh * info.block_bytes;
-	}
-
-	static VkImageUsageFlags to_vk_image_usage(uint32_t usage) {
-		VkImageUsageFlags flags = 0;
-		if (usage & ImageUsage::STORAGE) flags |= VK_IMAGE_USAGE_STORAGE_BIT;
-		if (usage & ImageUsage::SAMPLED) flags |= VK_IMAGE_USAGE_SAMPLED_BIT;
-		if (usage & ImageUsage::TRANSFER_SRC) flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-		if (usage & ImageUsage::TRANSFER_DST) flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-		if (usage & ImageUsage::COLOR_TARGET) flags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-		if (usage & ImageUsage::DEPTH_STENCIL_TARGET) flags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-		return flags;
 	}
 
 	void vulkan_create_descriptor_pool(ResourceManager& manager) {
@@ -187,6 +156,7 @@ namespace Nevarea::Renderer {
 		for (auto& img : manager.image_pool) {
 			if (img.image != VK_NULL_HANDLE) {
 				std::cerr << "[NEVAREA]: [RESOURCE MANAGER] Leaked image" << std::endl;
+				if (img.storage_view != VK_NULL_HANDLE) vkDestroyImageView(manager.device, img.storage_view, nullptr);
 				vkDestroyImageView(manager.device, img.view, nullptr);
 				vmaDestroyImage(manager.allocator, img.image, img.allocation);
 			}
@@ -361,20 +331,31 @@ namespace Nevarea::Renderer {
 		img.format = description.format;
 		img.usage = usage;
 
+		uint32_t mips = description.mip_levels;
+		if (mips == 0) {
+	        uint32_t m = std::max<uint32_t>(extent.width, extent.height);
+			mips = 1;
+
+		    while (m > 1) {
+				m >>= 1;
+			    mips++;
+			}
+	    }
+
 		VkImageCreateInfo image_info{};
 		image_info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-		image_info.imageType = VK_IMAGE_TYPE_2D;
+		image_info.imageType = to_vk_image_type(description.image_type);
 		image_info.format = format;
-		image_info.extent = { extent.width, extent.height, 1 };
-		image_info.mipLevels = 1;
-		image_info.arrayLayers = 1;
-		image_info.samples = VK_SAMPLE_COUNT_1_BIT;
+		image_info.extent = { extent.width, extent.height, description.depth };
+		image_info.mipLevels = mips;
+		image_info.arrayLayers = description.array_layers;
+		image_info.samples = (VkSampleCountFlagBits)description.samples;
 		image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
 		image_info.usage = usage;
+		image_info.flags = to_vk_image_create_flags(description.flags, description.image_type);
 
 		VmaAllocationCreateInfo alloc_info{};
-		alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-		alloc_info.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+		alloc_info.usage = to_vma_memory(description.memory_location);
 		alloc_info.priority = description.priority;
 
 		VK_ASSERT(vmaCreateImage(manager.allocator, &image_info, &alloc_info, &img.image, &img.allocation, nullptr));
@@ -383,10 +364,21 @@ namespace Nevarea::Renderer {
 		VkImageViewCreateInfo view_info{};
 		view_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		view_info.image = img.image;
-		view_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		view_info.viewType = to_vk_image_view_type(description.image_type);
 		view_info.format = format;
-		view_info.subresourceRange = { k_format_info[(uint32_t)description.format].aspect, 0, 1, 0, 1 };
+		view_info.subresourceRange = { k_format_info[(uint32_t)description.format].aspect, 0, mips, 0, description.array_layers };
 		VK_ASSERT(vkCreateImageView(manager.device, &view_info, nullptr, &img.view));
+
+		if (usage & VK_IMAGE_USAGE_STORAGE_BIT) {
+            VkImageViewCreateInfo copy = view_info;
+            copy.subresourceRange.baseMipLevel = 0;
+            copy.subresourceRange.levelCount = 1;
+
+            if (copy.viewType == VK_IMAGE_VIEW_TYPE_CUBE || copy.viewType == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY)
+                copy.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+
+            VK_ASSERT(vkCreateImageView(manager.device, &copy, nullptr, &img.storage_view));
+        }
 
 		uint32_t index;
 		if (!manager.image_free_list.empty()) {
@@ -402,7 +394,7 @@ namespace Nevarea::Renderer {
 
 		if (usage & VK_IMAGE_USAGE_STORAGE_BIT) {
 			VkDescriptorImageInfo desc_image{};
-			desc_image.imageView = img.view;
+			desc_image.imageView = img.storage_view;
 			desc_image.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
 			VkWriteDescriptorSet write{};
@@ -527,10 +519,12 @@ namespace Nevarea::Renderer {
 		VkDevice device = manager.device;
 		VkImage image = img.image;
 		VkImageView view = img.view;
+		VkImageView storage_view = img.storage_view;
 		VmaAllocation allocation = img.allocation;
 
-		vulkan_resources_push_deletor(frame.deletion_queues[frame.current_frame], [allocator, device, image, view, allocation]() {
-			vkDestroyImageView(device, view, nullptr);
+		vulkan_resources_push_deletor(frame.deletion_queues[frame.current_frame], [allocator, device, image, view, allocation, storage_view]() {
+		    if (storage_view != VK_NULL_HANDLE) vkDestroyImageView(device, storage_view, nullptr);
+		    vkDestroyImageView(device, view, nullptr);
 			vmaDestroyImage(allocator, image, allocation);
 			});
 

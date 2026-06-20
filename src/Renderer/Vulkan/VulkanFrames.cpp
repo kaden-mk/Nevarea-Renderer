@@ -205,7 +205,7 @@ namespace Nevarea::Renderer {
 		barrier.oldLayout = old_layout;
 		barrier.newLayout = new_layout;
 		barrier.image = image;
-		barrier.subresourceRange = { aspect, 0, 1, 0, 1 };
+		barrier.subresourceRange = { aspect, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS };
 
 		VkDependencyInfo dep{};
 		dep.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;

@@ -136,4 +136,68 @@ namespace Nevarea::Renderer {
 		}
 		return VK_PRESENT_MODE_FIFO_KHR;
 	}
+
+	VkImageType to_vk_image_type(ImageType image_type) {
+	    switch (image_type) {
+			case ImageType::D3: return VK_IMAGE_TYPE_3D;
+            case ImageType::D1: case ImageType::D1_ARRAY: return VK_IMAGE_TYPE_1D;
+            default: return VK_IMAGE_TYPE_2D;
+		}
+	}
+
+	VkImageViewType to_vk_image_view_type(ImageType image_type) {
+        switch (image_type) {
+            case ImageType::D1: return VK_IMAGE_VIEW_TYPE_1D;
+            case ImageType::D2: return VK_IMAGE_VIEW_TYPE_2D;
+            case ImageType::D3: return VK_IMAGE_VIEW_TYPE_3D;
+            case ImageType::D1_ARRAY: return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+            case ImageType::D2_ARRAY: return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+            case ImageType::CUBE: return VK_IMAGE_VIEW_TYPE_CUBE;
+            case ImageType::CUBE_ARRAY: return VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
+        }
+        return VK_IMAGE_VIEW_TYPE_2D;
+	}
+
+	VkImageUsageFlags to_vk_image_usage(uint32_t usage) {
+    	VkImageUsageFlags flags = 0;
+    	if (usage & ImageUsage::STORAGE) flags |= VK_IMAGE_USAGE_STORAGE_BIT;
+    	if (usage & ImageUsage::SAMPLED) flags |= VK_IMAGE_USAGE_SAMPLED_BIT;
+    	if (usage & ImageUsage::TRANSFER_SRC) flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    	if (usage & ImageUsage::TRANSFER_DST) flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    	if (usage & ImageUsage::COLOR_TARGET) flags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    	if (usage & ImageUsage::DEPTH_STENCIL_TARGET) flags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    	return flags;
+	}
+
+	VkBufferUsageFlags to_vk_buffer_usage(uint32_t usage) {
+        VkBufferUsageFlags flags = 0;
+        if (usage & BufferUsage::STORAGE) flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+        if (usage & BufferUsage::UNIFORM) flags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+        if (usage & BufferUsage::INDEX) flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+        if (usage & BufferUsage::INDIRECT) flags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+        if (usage & BufferUsage::TRANSFER_SRC) flags |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        if (usage & BufferUsage::TRANSFER_DST) flags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        return flags;
+    }
+
+    VmaMemoryUsage to_vma_memory(MemoryLocation location) {
+		switch (location) {
+			case MemoryLocation::GPU_ONLY: return VMA_MEMORY_USAGE_GPU_ONLY;
+			case MemoryLocation::CPU_TO_GPU: return VMA_MEMORY_USAGE_CPU_TO_GPU;
+			case MemoryLocation::GPU_TO_CPU: return VMA_MEMORY_USAGE_GPU_TO_CPU;
+		}
+		return VMA_MEMORY_USAGE_CPU_TO_GPU;
+	}
+
+	VkImageCreateFlags to_vk_image_create_flags(uint32_t flags, ImageType type) {
+        VkImageCreateFlags out = 0;
+
+        if (flags & ImageFlags::MUTABLE_FORMAT) out |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+        if (flags & ImageFlags::BLOCK_TEXEL_VIEW) out |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT;
+        if (flags & ImageFlags::ARRAY_2D_COMPATIBLE) out |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
+        if (type == ImageType::CUBE || type == ImageType::CUBE_ARRAY)
+            out |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+
+        return out;
+    }
 }

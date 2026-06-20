@@ -1,20 +1,14 @@
 #pragma once
 
 #include "WindowSystem.hpp"
-#include "lib/Core.hpp"
+#include "Core.hpp"
 
 #ifndef MAX_FRAMES_IN_FLIGHT
 #define MAX_FRAMES_IN_FLIGHT 2
 #endif
 
 namespace Nevarea {
-	enum class RenderingAPI {
-		NONE,
-		VULKAN
-	};
-
-	enum class RenderContext : uint32_t { INVALID = 0 };
-	enum class SwapchainHandle : uint32_t { INVALID = 0 };
+	enum class RenderingAPI : uint32_t { NONE, VULKAN };
 
 	enum class Format : uint32_t {
         // 8-bit unorm / srgb
@@ -32,6 +26,30 @@ namespace Nevarea {
         COUNT
     };
 
+   	enum class MemoryLocation : uint32_t { GPU_ONLY, CPU_TO_GPU, GPU_TO_CPU };
+	enum class PresentMode : uint32_t {	VSYNC, MAILBOX, IMMEDIATE };
+	enum class Filter : uint32_t { NEAREST, LINEAR };
+	enum class MipmapMode : uint32_t { NEAREST, LINEAR };
+	enum class AddressMode : uint32_t { REPEAT, MIRRORED_REPEAT, CLAMP_EDGE, CLAMP_BORDER };
+	enum class CompareOp : uint32_t { NONE, LESS, LESS_EQUAL, GREATER, GREATER_EQUAL, EQUAL, ALWAYS };
+	enum class BorderColor : uint32_t { TRANSPARENT_BLACK, OPAQUE_BLACK, OPAQUE_WHITE };
+	enum class PrimitiveTopology : uint32_t { TRIANGLE_LIST, TRIANGLE_STRIP, LINE_LIST, POINT_LIST };
+    enum class PolygonMode : uint32_t { FILL, LINE, POINT };
+    enum class CullMode : uint32_t { NONE, FRONT, BACK };
+    enum class FrontFace : uint32_t { CLOCKWISE, COUNTER_CLOCKWISE };
+
+    enum class ImageType : uint32_t {
+        D1, D2, D3,
+        D1_ARRAY, D2_ARRAY,
+        CUBE, CUBE_ARRAY,
+    };
+
+	enum class VertexFormat : uint32_t {
+	    FLOAT, FLOAT2, FLOAT3, FLOAT4,
+		UNORM8x4,
+		UINT, UINT2, UINT4
+	};
+
     enum class LoadOp : uint32_t { LOAD, CLEAR, DONT_CARE };
     enum class StoreOp : uint32_t { STORE, DONT_CARE };
 
@@ -46,13 +64,23 @@ namespace Nevarea {
 		};
 	}
 
-	struct ImageDescription {
-		uint32_t width = 0;
-		uint32_t height = 0;
-		Format format = Format::RGBA16_SFLOAT;
-		uint32_t usage = 0;
-		float priority = 0.5f;
-	};
+	namespace BufferUsage {
+        enum : uint32_t {
+            STORAGE = 1u << 0, UNIFORM = 1u << 1, INDEX = 1u << 2,
+            INDIRECT = 1u << 3, TRANSFER_SRC = 1u << 4, TRANSFER_DST = 1u << 5,
+        };
+    }
+
+    namespace ImageFlags {
+        enum : uint32_t {
+            MUTABLE_FORMAT = 1u << 0,
+            BLOCK_TEXEL_VIEW = 1u << 1,
+            ARRAY_2D_COMPATIBLE = 1u << 2,
+        };
+    }
+
+
+	enum class RenderContext : uint32_t { INVALID = 0 };
 
 	struct Image {
 		uint32_t id = UINT32_MAX;
@@ -78,44 +106,12 @@ namespace Nevarea {
         bool is_valid() const { return id != UINT32_MAX; }
     };
 
-   	namespace BufferUsage {
-		enum : uint32_t {
-			STORAGE = 1u << 0, UNIFORM = 1u << 1, INDEX = 1u << 2,
-			INDIRECT = 1u << 3, TRANSFER_SRC = 1u << 4, TRANSFER_DST = 1u << 5,
-		};
+   	struct Sampler {
+	    uint32_t id = UINT32_MAX;
+		uint32_t generation = 0;
+		bool is_valid() const { return id != UINT32_MAX; };
 	};
 
-	enum class MemoryLocation : uint32_t { GPU_ONLY, CPU_TO_GPU, GPU_TO_CPU };
-
-	enum class PresentMode : uint32_t {
-		VSYNC,
-		MAILBOX,
-		IMMEDIATE,
-	};
-
-	struct BufferDescription {
-		size_t size = 0;
-		uint32_t usage = 0;
-		MemoryLocation memory = MemoryLocation::CPU_TO_GPU;
-		const char* debug_name = "nevarea_buffer";
-		float priority = 0.5f;
-	};
-
-	enum class Filter : uint32_t { NEAREST, LINEAR };
-	enum class MipmapMode : uint32_t { NEAREST, LINEAR };
-	enum class AddressMode : uint32_t { REPEAT, MIRRORED_REPEAT, CLAMP_EDGE, CLAMP_BORDER };
-	enum class CompareOp : uint32_t { NONE, LESS, LESS_EQUAL, GREATER, GREATER_EQUAL, EQUAL, ALWAYS };
-	enum class BorderColor : uint32_t { TRANSPARENT_BLACK, OPAQUE_BLACK, OPAQUE_WHITE };
-	enum class PrimitiveTopology : uint32_t { TRIANGLE_LIST, TRIANGLE_STRIP, LINE_LIST, POINT_LIST };
-    enum class PolygonMode : uint32_t { FILL, LINE, POINT };
-    enum class CullMode : uint32_t { NONE, FRONT, BACK };
-    enum class FrontFace : uint32_t { CLOCKWISE, COUNTER_CLOCKWISE };
-
-	enum class VertexFormat : uint32_t {
-	    FLOAT, FLOAT2, FLOAT3, FLOAT4,
-		UNORM8x4,
-		UINT, UINT2, UINT4
-	};
 
 	struct VertexAttribute {
    	    uint32_t location;
@@ -128,6 +124,31 @@ namespace Nevarea {
         uint32_t attribute_count;
         uint32_t stride;
     };
+
+	struct ImageDescription {
+		uint32_t width = 0;
+		uint32_t height = 0;
+		uint32_t depth = 1;
+		uint32_t usage = 0;
+		uint32_t flags = 0;
+		uint32_t mip_levels = 0;
+		uint32_t array_layers = 1;
+		uint32_t samples = 1;
+
+		Format format = Format::RGBA16_SFLOAT;
+		MemoryLocation memory_location = MemoryLocation::GPU_ONLY;
+		ImageType image_type = ImageType::D2;
+
+		float priority = 0.5f;
+	};
+
+	struct BufferDescription {
+		size_t size = 0;
+		uint32_t usage = 0;
+		MemoryLocation memory = MemoryLocation::CPU_TO_GPU;
+		const char* debug_name = "nevarea_buffer";
+		float priority = 0.5f;
+	};
 
 	struct SamplerDescription {
         Filter min_filter = Filter::LINEAR;
@@ -144,12 +165,6 @@ namespace Nevarea {
 
         CompareOp compare_op = CompareOp::NONE;
         BorderColor border_color = BorderColor::OPAQUE_BLACK;
-	};
-
-	struct Sampler {
-	    uint32_t id = UINT32_MAX;
-		uint32_t generation = 0;
-		bool is_valid() { return id != UINT32_MAX; };
 	};
 
     struct ColorAttachment {
@@ -190,6 +205,7 @@ namespace Nevarea {
 
         bool blend_enable = false;
     };
+
 
 	NEVAREA_API RenderContext renderer_create(RenderingAPI api);
 	NEVAREA_API void renderer_destroy(RenderContext renderer);

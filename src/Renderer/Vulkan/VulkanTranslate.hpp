@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/n_pch.hpp"
+#include "Renderer/Vulkan/VulkanResourceManager.hpp"
 #include "lib/Rendering.hpp"
 
 namespace Nevarea::Renderer {
@@ -17,4 +18,10 @@ namespace Nevarea::Renderer {
 	VkCullModeFlags to_vk_cull_mode(CullMode cull);
 	VkFrontFace to_vk_front_face(FrontFace face);
 	VkPresentModeKHR to_vk_present_mode(PresentMode mode);
+	VkImageType to_vk_image_type(ImageType image_type);
+	VkImageViewType to_vk_image_view_type(ImageType image_type);
+	VkImageUsageFlags to_vk_image_usage(uint32_t usage);
+	VkBufferUsageFlags to_vk_buffer_usage(uint32_t usage);
+	VmaMemoryUsage to_vma_memory(MemoryLocation location);
+	VkImageCreateFlags to_vk_image_create_flags(uint32_t flags, ImageType type);
 }
