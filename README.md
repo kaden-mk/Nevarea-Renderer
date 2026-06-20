@@ -1,5 +1,5 @@
-# Nevarea Renderer
-Nevarea is a standalone modern vulkan-first renderer made in C++.
+# Nevarea
+Nevarea is a standalone modern vulkan-first RHI made in C++.
 
 Although in the near future, Nevarea plans to support every major graphics APIs, such as: AGC, Metal and Direct3D.
 

@@ -223,7 +223,12 @@ namespace Nevarea::Renderer {
 		VK_ASSERT(vmaCreateBuffer(manager.allocator, &buffer_create_info, &allocation_create_info, &buffer, &allocation, nullptr));
 		VK_NAME(manager.device, VK_OBJECT_TYPE_BUFFER, buffer, buffer_description.debug_name);
 
-		BufferData buffer_data = { buffer, allocation };
+		VkBufferDeviceAddressInfo address_info{};
+        address_info.sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+        address_info.buffer = buffer;
+        uint64_t address = vkGetBufferDeviceAddress(manager.device, &address_info);
+
+        BufferData buffer_data = { buffer, allocation, address };
 		uint32_t index = manager.buffers.add(buffer_data);
 
 		return { index, manager.buffers.generations[index] };
@@ -235,13 +240,7 @@ namespace Nevarea::Renderer {
 	}
 
 	uint64_t vulkan_get_buffer_address(const ResourceManager& manager, BufferHandle handle) {
-		VkBuffer buffer = vulkan_get_buffer(manager, handle);
-
-		VkBufferDeviceAddressInfo address_info{};
-		address_info.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
-		address_info.buffer = buffer;
-
-		return vkGetBufferDeviceAddress(manager.device, &address_info);
+	    return manager.buffers.get(handle.index, handle.generation).address;
 	}
 
 	void vulkan_upload_buffer(ResourceManager& manager, BufferHandle dst, const void* data, size_t size) {
