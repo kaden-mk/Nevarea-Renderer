@@ -206,6 +206,17 @@ namespace Nevarea {
         bool blend_enable = false;
     };
 
+    struct DrawCommand {
+        Pipeline pipeline;
+        Buffer index_buffer;
+        uint32_t count = 0;
+        uint32_t first = 0;
+        int32_t vertex_offset = 0;
+        uint32_t instance_count = 1;
+        const void* push = nullptr;
+        size_t push_size = 0;
+    };
+
 
 	NEVAREA_API RenderContext renderer_create(RenderingAPI api);
 	NEVAREA_API void renderer_destroy(RenderContext renderer);
@@ -237,8 +248,7 @@ namespace Nevarea {
 	NEVAREA_API Sampler renderer_create_sampler(RenderContext renderer, const SamplerDescription& description);
 	NEVAREA_API void renderer_destroy_sampler(RenderContext renderer, Sampler sampler);
 
-	NEVAREA_API void renderer_submit_mesh(RenderContext renderer, Mesh mesh, Pipeline pipeline, const void* push = nullptr, size_t push_size = 0);
-	NEVAREA_API void renderer_submit_mesh_range(RenderContext renderer, Mesh mesh, uint32_t first_index, uint32_t index_count, Pipeline pipeline, const void* push = nullptr, size_t push_size = 0);
+	NEVAREA_API void renderer_submit(RenderContext renderer, const DrawCommand& draw);
 	NEVAREA_API void renderer_dispatch_compute(RenderContext renderer, Pipeline pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, const void* push, size_t size, Image storage_target);
 	NEVAREA_API void renderer_present_image(RenderContext renderer, Image handle);
 	NEVAREA_API void renderer_upload_image(RenderContext renderer, Image handle, const void* pixels, size_t size);

@@ -173,8 +173,8 @@ namespace Nevarea::Renderer {
 
 			uint32_t img = dispatch.target_image.index;
 			if (img != UINT32_MAX && img != context.present_target.index
-				&& img < context.resource_manager.image_pool.size()) {
-				transition_tracked(cmd, context.resource_manager.image_pool[img], VK_IMAGE_LAYOUT_GENERAL,
+				&& img < context.resource_manager.images.data.size()) {
+				transition_tracked(cmd, context.resource_manager.images.data[img], VK_IMAGE_LAYOUT_GENERAL,
 					VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
 					VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_STORAGE_READ_BIT | VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT);
 			}
@@ -299,7 +299,7 @@ namespace Nevarea::Renderer {
     			vkCmdBindDescriptorSets(cmd, pipeline.bind_point, pipeline.layout, 0, 1, &context.resource_manager.descriptor_set, 0, nullptr);
 
     			for (const DrawItem& item : bucket.items) {
-                    MeshData& mesh = context.resource_manager.mesh_pool[item.mesh.id];
+                    MeshData& mesh = context.resource_manager.meshes.get(item.mesh.id, item.mesh.generation);
 
                     uint8_t push[NEVAREA_MAX_PUSH_CONSTANTS_SIZE];
                     memcpy(push, &mesh.vertex_address, sizeof(uint64_t)); // input our address directly
@@ -348,7 +348,7 @@ namespace Nevarea::Renderer {
 	{
 		vkDeviceWaitIdle(context.device.device);
 
-		for (PipelineContext& pipeline : context.pipelines)
+		for (PipelineContext& pipeline : context.pipelines.data)
 		    if (pipeline.pipeline != VK_NULL_HANDLE)
 				vulkan_pipeline_destroy(pipeline, context.device.device, context.frame_sync);
 
@@ -382,13 +382,7 @@ namespace Nevarea::Renderer {
     }
 
 	void vulkan_submit_mesh(VulkanContext& context, Mesh mesh, Pipeline pipeline, const void* push, size_t push_size) {
-		NEVAREA_ASSERT(mesh.id < context.resource_manager.mesh_pool.size(),
-			"RESOURCE MANAGER", "Mesh handle index out of range!");
-
-		NEVAREA_ASSERT(mesh.generation == context.resource_manager.mesh_generation_pool[mesh.id],
-			"RESOURCE MANAGER", "Stale Mesh handle (generation mismatch)!");
-
-		MeshData& mesh_data = context.resource_manager.mesh_pool[mesh.id];
+		MeshData& mesh_data = context.resource_manager.meshes.get(mesh.id, mesh.generation);
 
 		NEVAREA_ASSERT(push_size <= NEVAREA_MAX_PUSH_CONSTANTS_SIZE - sizeof(uint64_t),
             "RENDERER", "push data too large (8 bytes reserved for the mesh vertex address)");
@@ -399,11 +393,7 @@ namespace Nevarea::Renderer {
 	}
 
 	void vulkan_submit_mesh_range(VulkanContext& context, Mesh mesh, uint32_t first_index, uint32_t index_count, Pipeline pipeline, const void* push, size_t push_size) {
-    	NEVAREA_ASSERT(mesh.id < context.resource_manager.mesh_pool.size(),
-    		"RESOURCE MANAGER", "Mesh handle index out of range!");
-
-    	NEVAREA_ASSERT(mesh.generation == context.resource_manager.mesh_generation_pool[mesh.id],
-    		"RESOURCE MANAGER", "Stale Mesh handle (generation mismatch)!");
+        context.resource_manager.meshes.get(mesh.id, mesh.generation);
 
    		NEVAREA_ASSERT(push_size <= NEVAREA_MAX_PUSH_CONSTANTS_SIZE - sizeof(uint64_t),
                "RENDERER", "push data too large (8 bytes reserved for the mesh vertex address)");
@@ -423,32 +413,17 @@ namespace Nevarea::Renderer {
 	}
 
 	Pipeline vulkan_pipeline_add(VulkanContext &context, const PipelineContext &pipeline) {
-	    uint32_t index;
-
-		if (!context.pipeline_free_list.empty()) {
-		    index = context.pipeline_free_list.back();
-		    context.pipeline_free_list.pop_back();
-		    context.pipelines[index] = pipeline;
-		} else {
-		    index = static_cast<uint32_t>(context.pipelines.size());
-		    context.pipelines.push_back(pipeline);
-		    context.pipeline_generations.push_back(0);
-		}
-
-		return { index, context.pipeline_generations[index] };
+	    uint32_t index = context.pipelines.add(pipeline);
+		return { index, context.pipelines.generations[index] };
 	}
 
 	PipelineContext& vulkan_pipeline_get(VulkanContext& context, Pipeline handle) {
-		NEVAREA_ASSERT(handle.id < context.pipelines.size(), "PIPELINE", "Pipeline out of range!");
-		NEVAREA_ASSERT(handle.generation == context.pipeline_generations[handle.id], "PIPELINE", "Stale Pipeline (generation mismatch)!");
-		return context.pipelines[handle.id];
+		return context.pipelines.get(handle.id, handle.generation);
 	}
 
 	void vulkan_pipeline_remove(VulkanContext& context, Pipeline handle) {
 		PipelineContext& pipeline = vulkan_pipeline_get(context, handle);
 		vulkan_pipeline_destroy(pipeline, context.device.device, context.frame_sync);
-		context.pipelines[handle.id] = {};
-		context.pipeline_generations[handle.id]++;
-		context.pipeline_free_list.push_back(handle.id);
+		context.pipelines.remove(handle.id);
 	}
 }

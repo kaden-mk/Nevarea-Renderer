@@ -76,23 +76,45 @@ namespace Nevarea::Renderer {
 		{ VK_FORMAT_D32_SFLOAT_S8_UINT, 8, 1, 1, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT },
 	};
 
-	struct ResourceManager {
-		std::vector<VkBuffer> buffer_pool;
-		std::vector<VmaAllocation> allocation_pool;
-		std::vector<uint32_t> generation_pool;
+	template<class T>
+	struct Pool {
+	    std::vector<T> data;
+		std::vector<uint32_t> generations;
 		std::vector<uint32_t> free_list;
 
-		std::vector<MeshData> mesh_pool;
-		std::vector<uint32_t> mesh_generation_pool;
-		std::vector<uint32_t> mesh_free_list;
+		uint32_t add(const T& item) {
+            uint32_t index;
+            if (!free_list.empty()) { index = free_list.back(); free_list.pop_back(); data[index] = item; }
+            else { index = (uint32_t)data.size(); data.push_back(item); generations.push_back(0); }
+            return index;
+		}
 
-		std::vector<AllocatedImage> image_pool;
-		std::vector<uint32_t> image_generation_pool;
-		std::vector<uint32_t> image_free_list;
+        T& get(uint32_t index, uint32_t gen) {
+            NEVAREA_ASSERT(index < data.size() && gen == generations[index], "POOL", "stale/oob handle");
+            return data[index];
+        }
 
-		std::vector<VkSampler> sampler_pool;
-		std::vector<uint32_t>  sampler_generation_pool;
-        std::vector<uint32_t>  sampler_free_list;
+        const T& get(uint32_t index, uint32_t gen) const {
+			NEVAREA_ASSERT(index < data.size() && gen == generations[index], "POOL", "stale/oob handle");
+			return data[index];
+		}
+
+        void remove(uint32_t index) {
+            data[index] = T{};
+            generations[index]++;
+            free_list.push_back(index);
+        }
+
+        bool alive(uint32_t index, uint32_t gen) const { return index < data.size() && gen == generations[index]; }
+	};
+
+	struct BufferData { VkBuffer buffer; VmaAllocation allocation; uint64_t address; };
+
+	struct ResourceManager {
+    	Pool<BufferData> buffers;
+        Pool<MeshData> meshes;
+        Pool<AllocatedImage> images;
+        Pool<VkSampler> samplers;
 
 		VmaAllocator allocator;
 

@@ -471,21 +471,20 @@ namespace Nevarea {
             case RenderingAPI::VULKAN: {
                 auto& manager = render_state->vulkan.resource_manager;
 
-                NEVAREA_ASSERT(handle.id < manager.buffer_pool.size(), "RESOURCE MANAGER", "Buffer handle out of range!");
-                NEVAREA_ASSERT(handle.generation == manager.generation_pool[handle.id], "RESOURCE MANAGER", "Stale Buffer handle!");
+                Renderer::BufferData& buffer_data = manager.buffers.get(handle.id, handle.generation);
 
                 VmaAllocationInfo alloc_info{};
-                vmaGetAllocationInfo(manager.allocator, manager.allocation_pool[handle.id], &alloc_info);
+                vmaGetAllocationInfo(manager.allocator, buffer_data.allocation, &alloc_info);
                 NEVAREA_ASSERT(size <= alloc_info.size, "RESOURCE MANAGER", "renderer_update_buffer: size exceeds buffer allocation!");
 
                 VkMemoryPropertyFlags mem_flags;
-                vmaGetAllocationMemoryProperties(manager.allocator, manager.allocation_pool[handle.id], &mem_flags);
+                vmaGetAllocationMemoryProperties(manager.allocator, buffer_data.allocation, &mem_flags);
 
                 if (mem_flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
                     void* mapped_memory = nullptr;
-                    VK_ASSERT(vmaMapMemory(manager.allocator, manager.allocation_pool[handle.id], &mapped_memory));
+                    VK_ASSERT(vmaMapMemory(manager.allocator, buffer_data.allocation, &mapped_memory));
                     memcpy(mapped_memory, data, size);
-                    vmaUnmapMemory(manager.allocator, manager.allocation_pool[handle.id]);
+                    vmaUnmapMemory(manager.allocator, buffer_data.allocation);
                 } else
                     Renderer::vulkan_upload_buffer(manager, { handle.id, handle.generation }, data, size);
 

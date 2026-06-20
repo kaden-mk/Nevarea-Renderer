@@ -63,9 +63,7 @@ namespace Nevarea::Renderer {
 
 		std::vector<InteropRecord> interop_records;
 
-		std::vector<PipelineContext> pipelines;
-		std::vector<uint32_t> pipeline_generations;
-		std::vector<uint32_t> pipeline_free_list;
+		Pool<PipelineContext> pipelines;
 
 		std::vector<PassData> passes;
 		int32_t current_pass_index = -1;

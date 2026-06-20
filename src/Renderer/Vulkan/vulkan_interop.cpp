@@ -22,7 +22,7 @@ namespace Nevarea {
         Renderer::BufferHandle handle{ buffer.id, buffer.generation };
 
         VmaAllocationInfo info{};
-        vmaGetAllocationInfo(resources.allocator, resources.allocation_pool[buffer.id], &info);
+        vmaGetAllocationInfo(resources.allocator, resources.buffers.data[buffer.id].allocation, &info);
 
         return { Renderer::vulkan_get_buffer(resources, handle), info.size, Renderer::vulkan_get_buffer_address(resources, handle) };
     }
