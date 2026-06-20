@@ -177,6 +177,9 @@ namespace Nevarea::Renderer {
         if (usage & BufferUsage::INDIRECT) flags |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
         if (usage & BufferUsage::TRANSFER_SRC) flags |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
         if (usage & BufferUsage::TRANSFER_DST) flags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        if (usage & BufferUsage::ACCEL_STORAGE) flags |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR;
+        if (usage & BufferUsage::ACCEL_INPUT) flags |= VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
+        if (usage & BufferUsage::SHADER_BINDING_TABLE) flags |= VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR;
         return flags;
     }
 

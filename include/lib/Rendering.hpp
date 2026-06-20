@@ -68,6 +68,7 @@ namespace Nevarea {
         enum : uint32_t {
             STORAGE = 1u << 0, UNIFORM = 1u << 1, INDEX = 1u << 2,
             INDIRECT = 1u << 3, TRANSFER_SRC = 1u << 4, TRANSFER_DST = 1u << 5,
+            ACCEL_STORAGE = 1u << 6, ACCEL_INPUT = 1u << 7, SHADER_BINDING_TABLE = 1u << 8
         };
     }
 

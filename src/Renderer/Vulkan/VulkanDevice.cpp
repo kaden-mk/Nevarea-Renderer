@@ -308,7 +308,6 @@ namespace Nevarea::Renderer {
 		VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT mutable_desc{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_EXT };
 		VkPhysicalDeviceDescriptorBufferFeaturesEXT desc_buf{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT };
 		VkPhysicalDeviceDescriptorHeapFeaturesEXT desc_heap{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_FEATURES_EXT };
-		VkPhysicalDeviceAccelerationStructureFeaturesKHR accel_features{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR };
 
 		void* opt_head = nullptr;
 
@@ -368,11 +367,6 @@ namespace Nevarea::Renderer {
 			desc_heap.descriptorHeap = VK_TRUE;
 			desc_heap.pNext = opt_head;
 			opt_head = &desc_heap;
-		}
-		if (device_context->capabilities.acceleration_structure) {
-			accel_features.accelerationStructure = VK_TRUE;
-			accel_features.pNext = opt_head;
-			opt_head = &accel_features;
 		}
 		features12.pNext = opt_head;
 

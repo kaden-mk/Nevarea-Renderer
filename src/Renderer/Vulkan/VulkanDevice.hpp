@@ -20,7 +20,6 @@ namespace Nevarea::Renderer {
 		bool extended_dynamic_state3 = false;
 		bool calibrated_timesteps = false;
 		bool shader_module_identifier = false;
-		bool acceleration_structure = false;
 	};
 
 	struct DeviceContext {
