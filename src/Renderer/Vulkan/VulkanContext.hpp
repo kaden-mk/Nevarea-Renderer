@@ -13,9 +13,8 @@
 
 namespace Nevarea::Renderer {
     struct DrawItem {
-        Mesh mesh;
-        uint32_t first_index;
-        uint32_t index_count;
+        BufferHandle index_buffer;
+        uint32_t count, first, instance_count;
         int32_t vertex_offset;
         uint8_t push_data[NEVAREA_MAX_PUSH_CONSTANTS_SIZE];
         uint32_t push_size;
@@ -75,8 +74,7 @@ namespace Nevarea::Renderer {
 	void vulkan_context_draw(VulkanContext& context);
 	void vulkan_context_destroy(VulkanContext& context);
 
-	void vulkan_submit_mesh(VulkanContext& context, Mesh mesh, Pipeline pipeline, const void* push = nullptr, size_t push_size = 0);
-	void vulkan_submit_mesh_range(VulkanContext& context, Mesh mesh, uint32_t first_index, uint32_t index_count, Pipeline pipeline, const void* push = nullptr, size_t push_size = 0);
+	void vulkan_submit(VulkanContext& context, const DrawCommand& cmd);
 
 	void vulkan_begin_pass(VulkanContext& context, PassData pass);
 	void vulkan_end_pass(VulkanContext& context);

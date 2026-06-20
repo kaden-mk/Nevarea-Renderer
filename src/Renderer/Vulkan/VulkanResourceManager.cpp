@@ -129,18 +129,6 @@ namespace Nevarea::Renderer {
 
 	void vulkan_resources_destroy(ResourceManager& manager)
 	{
-	    for (size_t i = 0; i < manager.meshes.data.size(); ++i) {
-			MeshData& mesh = manager.meshes.data[i];
-			BufferHandle& buffer = mesh.vertex_buffer;
-
-			if (buffer.index >= manager.buffers.generations.size()) continue;
-			if (buffer.generation != manager.buffers.generations[buffer.index]) continue;
-			if (manager.buffers.data[buffer.index].buffer == VK_NULL_HANDLE) continue;
-
-			std::cerr << "[NEVAREA]: [RESOURCE MANAGER] Leaked mesh at slot " << i << std::endl;
-			vulkan_destroy_buffer(manager, buffer);
-		}
-
 		for (size_t i = 0; i < manager.buffers.data.size(); ++i) {
 			if (manager.buffers.data[i].buffer != VK_NULL_HANDLE) {
 				std::cerr << "[NEVAREA]: [RESOURCE MANAGER] Leaked buffer at slot " << i << std::endl;
@@ -285,12 +273,17 @@ namespace Nevarea::Renderer {
         vmaDestroyBuffer(manager.allocator, staging_buffer, staging_alloc);
 	}
 
-	void vulkan_destroy_buffer(ResourceManager& manager, BufferHandle handle)
-	{
-		BufferData& buffer_data = manager.buffers.get(handle.index, handle.generation);
-		vmaDestroyBuffer(manager.allocator, buffer_data.buffer, buffer_data.allocation);
-		manager.buffers.remove(handle.index);
-	}
+	void vulkan_destroy_buffer(ResourceManager& manager, BufferHandle handle, FrameContext& frame) {
+        BufferData& buffer_data = manager.buffers.get(handle.index, handle.generation);
+        VkBuffer buffer = buffer_data.buffer;
+        VmaAllocation allocation = buffer_data.allocation;
+        VmaAllocator allocator = manager.allocator;
+
+        vulkan_resources_push_deletor(frame.deletion_queues[frame.current_frame],
+            [allocator, buffer, allocation]() { vmaDestroyBuffer(allocator, buffer, allocation); });
+
+        manager.buffers.remove(handle.index);
+    }
 
 	ImageHandle vulkan_create_image(ResourceManager& manager, const ImageDescription& description)
 	{
@@ -401,8 +394,7 @@ namespace Nevarea::Renderer {
 		return { index, manager.images.generations[index] };
 	}
 
-	AllocatedImage& vulkan_get_image(ResourceManager& manager, ImageHandle handle)
-	{
+	AllocatedImage& vulkan_get_image(ResourceManager& manager, ImageHandle handle) {
 		return manager.images.get(handle.index, handle.generation);
 	}
 
@@ -486,81 +478,6 @@ namespace Nevarea::Renderer {
 			});
 
 		manager.images.remove(handle.index);
-	}
-
-	Mesh vulkan_create_mesh(ResourceManager& manager, const void* vertex_data, uint32_t vertex_count, const VertexLayout& layout, uint32_t index_count, const uint32_t* indices) {
-	    NEVAREA_ASSERT(layout.stride > 0 && vertex_data, "RESOURCE MANAGER",
-			"you can't create a 0 stride mesh!");
-
-	    size_t size = (size_t)layout.stride * vertex_count;
-
-	    BufferDescription description{};
-    	description.size = size;
-    	description.usage = BufferUsage::STORAGE | BufferUsage::TRANSFER_DST;
-    	description.memory = MemoryLocation::GPU_ONLY;
-    	description.debug_name = "mesh_vertex_buffer";
-
-		BufferHandle handle = vulkan_create_buffer(manager, description);
-		vulkan_upload_buffer(manager, handle, vertex_data, size);
-
-		MeshData mesh = {};
-		mesh.vertex_buffer = handle;
-		mesh.vertex_address = vulkan_get_buffer_address(manager, handle);
-		mesh.vertex_count = vertex_count;
-
-		if (index_count > 0) {
-		    size_t index_size = index_count * sizeof(uint32_t);
-
-		    BufferDescription index_description{};
-			index_description.size = index_size;
-			index_description.usage = BufferUsage::INDEX | BufferUsage::TRANSFER_DST;
-			index_description.memory = MemoryLocation::GPU_ONLY;
-			index_description.debug_name = "mesh_index_buffer";
-
-			BufferHandle index_buffer = vulkan_create_buffer(manager, index_description);
-			vulkan_upload_buffer(manager, index_buffer, indices, index_size);
-
-			mesh.index_count = index_count;
-			mesh.index_buffer = index_buffer;
-		}
-
-		uint32_t index = manager.meshes.add(mesh);
-		return { index, manager.meshes.generations[index] };
-	}
-
-	void vulkan_destroy_mesh(ResourceManager& manager, Mesh handle, FrameContext& frame) {
-		MeshData& mesh = manager.meshes.get(handle.id, handle.generation);
-
-		BufferHandle vertex_buffer = mesh.vertex_buffer;
-		uint32_t buffer_id = vertex_buffer.index;
-
-		VmaAllocator allocator = manager.allocator;
-		BufferData buffer_data = manager.buffers.data[buffer_id];
-		VkBuffer buffer = buffer_data.buffer;
-		VmaAllocation allocation = buffer_data.allocation;
-
-		vulkan_resources_push_deletor(frame.deletion_queues[frame.current_frame], [allocator, buffer, allocation]() {
-			vmaDestroyBuffer(allocator, buffer, allocation);
-		});
-
-		manager.buffers.remove(buffer_id);
-
-		if (mesh.index_buffer.is_valid()) {
-		    BufferHandle index_buffer = mesh.index_buffer;
-			uint32_t index_id = index_buffer.index;
-
-			BufferData index_data = manager.buffers.data[index_id];
-			VkBuffer vk_index_buffer = index_data.buffer;
-			VmaAllocation index_allocation = index_data.allocation;
-
-			vulkan_resources_push_deletor(frame.deletion_queues[frame.current_frame], [allocator, vk_index_buffer, index_allocation]() {
-				vmaDestroyBuffer(allocator, vk_index_buffer, index_allocation);
-			});
-
-			manager.buffers.remove(index_id);
-		}
-
-		manager.meshes.remove(handle.id);
 	}
 
 	Sampler vulkan_create_sampler(ResourceManager& manager, const SamplerDescription& description) {

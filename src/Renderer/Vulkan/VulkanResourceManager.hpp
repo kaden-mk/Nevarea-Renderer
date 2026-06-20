@@ -112,7 +112,6 @@ namespace Nevarea::Renderer {
 
 	struct ResourceManager {
     	Pool<BufferData> buffers;
-        Pool<MeshData> meshes;
         Pool<AllocatedImage> images;
         Pool<VkSampler> samplers;
 
@@ -144,15 +143,12 @@ namespace Nevarea::Renderer {
 	VkBuffer vulkan_get_buffer(const ResourceManager& manager, BufferHandle handle);
 	uint64_t vulkan_get_buffer_address(const ResourceManager& manager, BufferHandle handle);
 	void vulkan_upload_buffer(ResourceManager& manager, BufferHandle dst, const void* data, size_t size);
-	void vulkan_destroy_buffer(ResourceManager&, BufferHandle handle);
+	void vulkan_destroy_buffer(ResourceManager&, BufferHandle handle, FrameContext& frame);
 
 	ImageHandle vulkan_create_image(ResourceManager& manager, const ImageDescription& description);
 	AllocatedImage& vulkan_get_image(ResourceManager& manager, ImageHandle handle);
 	void vulkan_upload_image(ResourceManager& manager, ImageHandle handle, const void* pixels, size_t size);
 	void vulkan_destroy_image(ResourceManager& manager, ImageHandle handle, FrameContext& frame);
-
-	Mesh vulkan_create_mesh(ResourceManager& manager, const void* vertex_data, uint32_t vertex_count, const VertexLayout& layout, uint32_t index_count, const uint32_t* indices);
-	void vulkan_destroy_mesh(ResourceManager& manager, Mesh handle, FrameContext& frame);
 
 	Sampler vulkan_create_sampler(ResourceManager& manager, const SamplerDescription& description);
 	void vulkan_destroy_sampler(ResourceManager& manager, Sampler sampler, FrameContext& frame);

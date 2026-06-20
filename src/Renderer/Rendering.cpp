@@ -313,35 +313,6 @@ namespace Nevarea {
 		}
 	}
 
-	Mesh renderer_create_mesh(RenderContext context, const void* vertex_data, uint32_t vertex_count, const VertexLayout& layout, const uint32_t* indices, uint32_t index_count) {
-		RenderState* render_state = resolve(context);
-
-		switch (render_state->api) {
-			case RenderingAPI::VULKAN: {
-				return Renderer::vulkan_create_mesh(render_state->vulkan.resource_manager, vertex_data, vertex_count, layout, index_count, indices);
-			}
-
-			case RenderingAPI::NONE: {
-				return {};
-			}
-		}
-
-		return {};
-	}
-
-	void renderer_destroy_mesh(RenderContext context, Mesh handle) {
-		RenderState* render_state = resolve(context);
-
-		switch (render_state->api) {
-			case RenderingAPI::VULKAN:
-				Renderer::vulkan_destroy_mesh(render_state->vulkan.resource_manager, handle, render_state->vulkan.frame_sync);
-				break;
-
-			case RenderingAPI::NONE:
-				break;
-		}
-	}
-
 	Sampler renderer_create_sampler(RenderContext context, const SamplerDescription& description) {
     	RenderState* render_state = resolve(context);
 
@@ -362,31 +333,13 @@ namespace Nevarea {
 		};
 	}
 
-	void renderer_submit_mesh(RenderContext context, Mesh mesh, Pipeline pipeline, const void* push, size_t push_size) {
-		RenderState* render_state = resolve(context);
-
-		switch (render_state->api) {
-			case RenderingAPI::VULKAN:
-				Renderer::vulkan_submit_mesh(render_state->vulkan, mesh, pipeline, push, push_size);
-				break;
-
-			case RenderingAPI::NONE:
-				break;
-		}
-	}
-
-	void renderer_submit_mesh_range(RenderContext context, Mesh mesh, uint32_t first_index, uint32_t index_count, Pipeline pipeline, const void* push, size_t push_size) {
-    	RenderState* render_state = resolve(context);
-
-    	switch (render_state->api) {
-    		case RenderingAPI::VULKAN:
-    			Renderer::vulkan_submit_mesh_range(render_state->vulkan, mesh, first_index, index_count, pipeline, push, push_size);
-    			break;
-
-    		case RenderingAPI::NONE:
-    			break;
-    	}
-	}
+	void renderer_submit(RenderContext context, const DrawCommand& cmd) {
+        RenderState* render_state = resolve(context);
+        switch (render_state->api) {
+            case RenderingAPI::VULKAN: Renderer::vulkan_submit(render_state->vulkan, cmd); break;
+            case RenderingAPI::NONE: break;
+        }
+    }
 
 	void renderer_dispatch_compute(RenderContext context, Pipeline pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, const void* push, size_t size, Image storage_target) {
 		RenderState* render_state = resolve(context);
@@ -456,7 +409,7 @@ namespace Nevarea {
 
         switch (render_state->api) {
             case RenderingAPI::VULKAN:
-                Renderer::vulkan_destroy_buffer(render_state->vulkan.resource_manager, { handle.id, handle.generation });
+                Renderer::vulkan_destroy_buffer(render_state->vulkan.resource_manager, { handle.id, handle.generation }, render_state->vulkan.frame_sync);
                 break;
 
             case RenderingAPI::NONE:

@@ -299,27 +299,17 @@ namespace Nevarea::Renderer {
     			vkCmdBindDescriptorSets(cmd, pipeline.bind_point, pipeline.layout, 0, 1, &context.resource_manager.descriptor_set, 0, nullptr);
 
     			for (const DrawItem& item : bucket.items) {
-                    MeshData& mesh = context.resource_manager.meshes.get(item.mesh.id, item.mesh.generation);
+                    if (item.push_size)
+                        vkCmdPushConstants(cmd, pipeline.layout,
+                            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                            0, item.push_size, item.push_data);
 
-                    uint8_t push[NEVAREA_MAX_PUSH_CONSTANTS_SIZE];
-                    memcpy(push, &mesh.vertex_address, sizeof(uint64_t)); // input our address directly
-                    if (item.push_size) memcpy(push + sizeof(uint64_t), item.push_data, item.push_size);
-
-                    uint32_t total = (uint32_t)sizeof(uint64_t) + item.push_size;
-                    vkCmdPushConstants(cmd, pipeline.layout,
-                        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                        0, total, push);
-
-                    if (mesh.index_buffer.is_valid()) {
-                        VkBuffer index_buffer = vulkan_get_buffer(context.resource_manager, mesh.index_buffer);
+                    if (item.index_buffer.is_valid()) {
+                        VkBuffer index_buffer = vulkan_get_buffer(context.resource_manager, item.index_buffer);
                         vkCmdBindIndexBuffer(cmd, index_buffer, 0, VK_INDEX_TYPE_UINT32);
-                        vkCmdDrawIndexed(cmd,
-                            item.index_count, 1,
-                            item.first_index, item.vertex_offset,
-                            0);
+                        vkCmdDrawIndexed(cmd, item.count, item.instance_count, item.first, item.vertex_offset, 0);
                     } else {
-                        vkCmdDraw(cmd, mesh.vertex_count,
-                            1, 0, 0);
+                        vkCmdDraw(cmd, item.count, item.instance_count, item.first, 0);
                     }
                 }
     			bucket.items.clear();
@@ -381,27 +371,22 @@ namespace Nevarea::Renderer {
         return bucket;
     }
 
-	void vulkan_submit_mesh(VulkanContext& context, Mesh mesh, Pipeline pipeline, const void* push, size_t push_size) {
-		MeshData& mesh_data = context.resource_manager.meshes.get(mesh.id, mesh.generation);
+    void vulkan_submit(VulkanContext& context, const DrawCommand& cmd) {
+        DrawItem item{};
+        item.index_buffer = { cmd.index_buffer.id, cmd.index_buffer.generation };
+        item.count = cmd.count;
+        item.first = cmd.first;
+        item.vertex_offset = cmd.vertex_offset;
+        item.instance_count = cmd.instance_count;
+        item.push_size = (uint32_t)cmd.push_size;
 
-		NEVAREA_ASSERT(push_size <= NEVAREA_MAX_PUSH_CONSTANTS_SIZE - sizeof(uint64_t),
-            "RENDERER", "push data too large (8 bytes reserved for the mesh vertex address)");
+        if (cmd.push && cmd.push_size) {
+            NEVAREA_ASSERT(cmd.push_size <= NEVAREA_MAX_PUSH_CONSTANTS_SIZE, "RENDERER", "push too large");
+            memcpy(item.push_data, cmd.push, cmd.push_size);
+        }
 
-		DrawItem item{ mesh, 0, mesh_data.index_count, 0, {}, (uint32_t)push_size };
-        if (push && push_size) memcpy(item.push_data, push, push_size);
-        get_bucket(context, pipeline).items.push_back(item);
-	}
-
-	void vulkan_submit_mesh_range(VulkanContext& context, Mesh mesh, uint32_t first_index, uint32_t index_count, Pipeline pipeline, const void* push, size_t push_size) {
-        context.resource_manager.meshes.get(mesh.id, mesh.generation);
-
-   		NEVAREA_ASSERT(push_size <= NEVAREA_MAX_PUSH_CONSTANTS_SIZE - sizeof(uint64_t),
-               "RENDERER", "push data too large (8 bytes reserved for the mesh vertex address)");
-
-        DrawItem item{mesh, first_index, index_count, 0, {}, (uint32_t)(push_size ? push_size : sizeof(uint64_t)) };
-        if (push && push_size) memcpy(item.push_data, push, push_size);
-        get_bucket(context, pipeline).items.push_back(item);
-	}
+        get_bucket(context, cmd.pipeline).items.push_back(item);
+    }
 
 	void vulkan_begin_pass(VulkanContext& context, PassData pass) {
 	    context.passes.push_back(pass);
