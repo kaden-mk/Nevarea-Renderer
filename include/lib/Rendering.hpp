@@ -266,6 +266,7 @@ namespace Nevarea {
 	NEVAREA_API void renderer_destroy_pipeline(RenderContext renderer, Pipeline pipeline);
 
 	NEVAREA_API AccelerationStructure renderer_create_acceleration_structure(RenderContext renderer, const AccelStructDescription& description);
+	NEVAREA_API uint64_t renderer_get_acceleration_structure_address(RenderContext renderer, AccelerationStructure acceleration_structure);
 	NEVAREA_API void renderer_destroy_acceleration_structure(RenderContext renderer, AccelerationStructure acceleration_structure);
 
 	NEVAREA_API Image renderer_create_image(RenderContext renderer, const ImageDescription& description);

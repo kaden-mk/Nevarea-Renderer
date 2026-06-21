@@ -294,6 +294,12 @@ namespace Nevarea {
 		return { handle.index, handle.generation };
 	}
 
+	uint64_t renderer_get_acceleration_structure_address(RenderContext context, AccelerationStructure acceleration_structure) {
+        RenderState* render_state = resolve(context);
+        if (render_state->api != RenderingAPI::VULKAN) return 0;
+        return Renderer::vulkan_get_accel_address(render_state->vulkan.resource_manager, { acceleration_structure.id, acceleration_structure.generation });
+	}
+
 	void renderer_destroy_acceleration_structure(RenderContext context, AccelerationStructure acceleration_structure) {
         RenderState* render_state = resolve(context);
         if (render_state->api != RenderingAPI::VULKAN) return;

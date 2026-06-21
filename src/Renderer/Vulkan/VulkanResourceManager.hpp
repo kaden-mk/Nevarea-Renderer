@@ -11,6 +11,7 @@ namespace Nevarea::Renderer {
 	#define NEVAREA_BUFFER_IMAGE_SIZE 1000
 	#define NEVAREA_BUFFER_STORAGE_SIZE 1000
 	#define NEVAREA_SAMPLER_SIZE 64
+	#define NEVAREA_ACCEL_SIZE 64
 
 	struct ImageHandle {
 		uint32_t index = UINT32_MAX;
@@ -116,11 +117,21 @@ namespace Nevarea::Renderer {
 		uint64_t address;
 	};
 
+	struct BindlessSlot {
+	    uint32_t binding;
+		VkDescriptorType type;
+		uint32_t count;
+		const char* required_extension;
+		bool update_after_bind;
+	};
+
 	struct ResourceManager {
 	    Pool<AccelStructData> accels;
     	Pool<BufferData> buffers;
         Pool<AllocatedImage> images;
         Pool<VkSampler> samplers;
+
+        std::vector<const char*> enabled_extensions;
 
 		VmaAllocator allocator;
 
@@ -141,7 +152,7 @@ namespace Nevarea::Renderer {
 
 	VkFormat to_vk_format(Format format);
 
-	void vulkan_resources_init(ResourceManager& manager, VmaAllocator allocator, VkDevice device, VkPhysicalDevice physical_device, VkQueue graphics_queue, uint32_t graphics_family_index);
+	void vulkan_resources_init(ResourceManager& manager, VmaAllocator allocator, VkDevice device, VkPhysicalDevice physical_device, VkQueue graphics_queue, uint32_t graphics_family_index, const std::vector<const char*>& enabled_extensions);
 	void vulkan_resources_destroy(ResourceManager& manager);
 
 	AccelStructHandle vulkan_create_acceleration_structure(ResourceManager& manager, const AccelStructDescription& description);

@@ -381,13 +381,22 @@ namespace Nevarea::Renderer {
 		create_info.enabledLayerCount = 0;
 		create_info.ppEnabledLayerNames = nullptr;
 
+        VkBaseOutStructure* tail = reinterpret_cast<VkBaseOutStructure*>(&features2);
 		if (device_context->user_feature_chain) {
-            VkBaseOutStructure* tail = reinterpret_cast<VkBaseOutStructure*>(&features2);
             while (tail->pNext) tail = tail->pNext;
             tail->pNext = (VkBaseOutStructure*)device_context->user_feature_chain;
         }
 
-		VK_ASSERT(vkCreateDevice(device_context->physical_device, &create_info, nullptr, &device_context->device));
+		// quick hacky fix for unsupported features before i properly split this up
+		//VK_ASSERT(vkCreateDevice(device_context->physical_device, &create_info, nullptr, &device_context->device));
+
+		VkResult result = vkCreateDevice(device_context->physical_device, &create_info, nullptr, &device_context->device);
+		if (result != VK_SUCCESS && device_context->user_feature_chain) {
+            tail->pNext = nullptr;
+            result = vkCreateDevice(device_context->physical_device, &create_info, nullptr, &device_context->device);
+        }
+
+		VK_ASSERT(result);
 
 		device_context->graphics_family_index = indices.graphics_family.value();
 		device_context->compute_family_index = indices.compute_family.value();

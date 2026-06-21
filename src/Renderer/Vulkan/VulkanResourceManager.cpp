@@ -39,59 +39,67 @@ namespace Nevarea::Renderer {
 		manager.scratch_alignment = acceleration_structure_properties.minAccelerationStructureScratchOffsetAlignment;
 	}
 
-	void vulkan_create_descriptor_pool(ResourceManager& manager) {
-		VkDescriptorPoolSize pool_sizes[] = {
-			{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, NEVAREA_BUFFER_IMAGE_SIZE },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, NEVAREA_BUFFER_STORAGE_SIZE },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, NEVAREA_BUFFER_IMAGE_SIZE },
-			{ VK_DESCRIPTOR_TYPE_SAMPLER, NEVAREA_SAMPLER_SIZE }
-		};
+	static const BindlessSlot k_bindless_slots[] = {
+        { 0, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, NEVAREA_BUFFER_IMAGE_SIZE, nullptr, true },
+        { 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, NEVAREA_BUFFER_IMAGE_SIZE, nullptr, true },
+        { 2, VK_DESCRIPTOR_TYPE_SAMPLER, NEVAREA_SAMPLER_SIZE, nullptr, true },
+        { 3, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, NEVAREA_ACCEL_SIZE, VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME, false },
+    };
 
-		VkDescriptorPoolCreateInfo create_info{};
-		create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		create_info.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
-		create_info.maxSets = 1;
-		create_info.poolSizeCount = 4;
-		create_info.pPoolSizes = pool_sizes;
+	static bool extension_enabled(const ResourceManager& manager, const char* name) {
+        if (!name) return true;
+
+        for (const char* extension : manager.enabled_extensions)
+            if (strcmp(extension, name) == 0) return true;
+
+        return false;
+    }
+
+    static bool slot_active(const BindlessSlot& slot, const ResourceManager& manager) {
+        return extension_enabled(manager, slot.required_extension);
+    }
+
+	void vulkan_create_descriptor_pool(ResourceManager& manager) {
+	    std::vector<VkDescriptorPoolSize> pool_sizes;
+
+		for (const BindlessSlot& slot : k_bindless_slots)
+            if (slot_active(slot, manager)) pool_sizes.push_back({ slot.type, slot.count });
+
+        VkDescriptorPoolCreateInfo create_info{};
+        create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        create_info.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
+        create_info.maxSets = 1;
+        create_info.poolSizeCount = (uint32_t)pool_sizes.size();
+        create_info.pPoolSizes = pool_sizes.data();
 
 		VK_ASSERT(vkCreateDescriptorPool(manager.device, &create_info, nullptr, &manager.descriptor_pool));
 		VK_NAME(manager.device, VK_OBJECT_TYPE_DESCRIPTOR_POOL, manager.descriptor_pool, "descriptor_pool");
 	}
 
 	void vulkan_create_descriptor_layout(ResourceManager& manager) {
-		VkDescriptorSetLayoutBinding bindings[3]{};
-		bindings[0].binding = 0;
-		bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-		bindings[0].descriptorCount = NEVAREA_BUFFER_IMAGE_SIZE;
-		bindings[0].stageFlags = VK_SHADER_STAGE_ALL;
+        std::vector<VkDescriptorSetLayoutBinding> bindings;
+        std::vector<VkDescriptorBindingFlags> flags;
 
-		bindings[1].binding = 1;
-		bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-		bindings[1].descriptorCount = NEVAREA_BUFFER_IMAGE_SIZE;
-		bindings[1].stageFlags = VK_SHADER_STAGE_ALL;
+        for (const BindlessSlot& slot : k_bindless_slots) {
+            if (!slot_active(slot, manager)) continue;
 
-		bindings[2].binding = 2;
-		bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-		bindings[2].descriptorCount = NEVAREA_SAMPLER_SIZE;
-		bindings[2].stageFlags = VK_SHADER_STAGE_ALL;
+            bindings.push_back({ slot.binding, slot.type, slot.count, VK_SHADER_STAGE_ALL, nullptr });
+            VkDescriptorBindingFlags flag = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
+            if (slot.update_after_bind) flag |= VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+            flags.push_back(flag);
+        }
 
-		VkDescriptorBindingFlags flags[3] = {
-			VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
-			VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
-			VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT,
-		};
+        VkDescriptorSetLayoutBindingFlagsCreateInfo layout_flags{};
+        layout_flags.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+        layout_flags.bindingCount = (uint32_t)flags.size();
+        layout_flags.pBindingFlags = flags.data();
 
-		VkDescriptorSetLayoutBindingFlagsCreateInfo layout_flags{};
-		layout_flags.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
-		layout_flags.bindingCount = 3;
-		layout_flags.pBindingFlags = flags;
-
-		VkDescriptorSetLayoutCreateInfo layout_info{};
-		layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		layout_info.pNext = &layout_flags;
-		layout_info.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
-		layout_info.bindingCount = 3;
-		layout_info.pBindings = bindings;
+        VkDescriptorSetLayoutCreateInfo layout_info{};
+        layout_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        layout_info.pNext = &layout_flags;
+        layout_info.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
+        layout_info.bindingCount = (uint32_t)bindings.size();
+        layout_info.pBindings = bindings.data();
 
 		VK_ASSERT(vkCreateDescriptorSetLayout(manager.device, &layout_info, nullptr, &manager.descriptor_layout));
 		VK_NAME(manager.device, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, manager.descriptor_layout, "descriptor_set_layout");
@@ -128,12 +136,13 @@ namespace Nevarea::Renderer {
         VK_ASSERT(vkAllocateCommandBuffers(manager.device, &alloc, &manager.upload_cmd));
 	}
 
-	void vulkan_resources_init(ResourceManager& manager, VmaAllocator allocator, VkDevice device, VkPhysicalDevice physical_device, VkQueue graphics_queue, uint32_t graphics_family_index)
+	void vulkan_resources_init(ResourceManager& manager, VmaAllocator allocator, VkDevice device, VkPhysicalDevice physical_device, VkQueue graphics_queue, uint32_t graphics_family_index, const std::vector<const char*>& enabled_extensions)
 	{
 		manager.allocator = allocator;
 		manager.device = device;
 		manager.physical_device = physical_device;
 		manager.upload_queue = graphics_queue;
+		manager.enabled_extensions = enabled_extensions;
 
 		query_acceleration_structure_properties(manager);
 		vulkan_create_descriptor_pool(manager);
@@ -299,6 +308,22 @@ namespace Nevarea::Renderer {
         uint64_t address = vkGetAccelerationStructureDeviceAddressKHR(manager.device, &accel_device_info);
 
         uint32_t index = manager.accels.add({ accel, backing, address });
+
+        VkWriteDescriptorSetAccelerationStructureKHR accel_write{};
+        accel_write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+        accel_write.accelerationStructureCount = 1;
+        accel_write.pAccelerationStructures = &accel;
+
+        VkWriteDescriptorSet write{};
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.pNext = &accel_write;
+        write.dstSet = manager.descriptor_set;
+        write.dstBinding = 3;
+        write.dstArrayElement = index;
+        write.descriptorCount = 1;
+        write.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+        vkUpdateDescriptorSets(manager.device, 1, &write, 0, nullptr);
+
         return { index, manager.accels.generations[index] };
 	}
 
@@ -514,7 +539,7 @@ namespace Nevarea::Renderer {
 		if (usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
             VkDescriptorImageInfo desc_image{};
             desc_image.imageView = img.view;
-            desc_image.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            desc_image.imageLayout = (usage & VK_IMAGE_USAGE_STORAGE_BIT) ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
             VkWriteDescriptorSet write{};
             write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
