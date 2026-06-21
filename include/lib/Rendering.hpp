@@ -42,6 +42,10 @@ namespace Nevarea {
 
     enum class LoadOp : uint32_t { LOAD, CLEAR, DONT_CARE };
     enum class StoreOp : uint32_t { STORE, DONT_CARE };
+    enum class AccelType : uint32_t { BOTTOM_LEVEL, TOP_LEVEL, GENERIC };
+    enum class AccelBuildMode : uint32_t { BUILD, UPDATE };
+    enum class AccelGeometryType : uint32_t { TRIANGLES, AABBS, INSTANCES };
+    enum class IndexType : uint32_t { NONE, UINT16, UINT32 };
 
 	namespace ImageUsage {
 		enum : uint32_t {
@@ -68,6 +72,17 @@ namespace Nevarea {
             BLOCK_TEXEL_VIEW = 1u << 1,
             ARRAY_2D_COMPATIBLE = 1u << 2,
         };
+    }
+
+    namespace AccelBuildFlags {
+        enum : uint32_t {
+            ALLOW_UPDATE = 1u << 0, ALLOW_COMPACTION = 1u << 1,
+            PREFER_FAST_TRACE = 1u << 2, PREFER_FAST_BUILD = 1u << 3, LOW_MEMORY = 1u << 4,
+        };
+    }
+
+    namespace AccelGeometryFlags {
+        enum : uint32_t { OPAQUE_GEOMETRY = 1u << 0, NO_DUPLICATE_ANY_HIT = 1u << 1 };
     }
 
 
@@ -104,14 +119,36 @@ namespace Nevarea {
     };
 
 
-    struct BlasGeometry {
+    struct AccelGeometry {
+        AccelGeometryType type = AccelGeometryType::TRIANGLES;
+        uint32_t flags = 0;
+
         uint64_t vertex_address = 0;
         Format vertex_format = Format::RGB32_SFLOAT;
         uint32_t vertex_stride = 0;
-        uint32_t vertex_count = 0;
+        uint32_t max_vertex = 0;
         uint64_t index_address = 0;
-        uint32_t index_count = 0;
-        bool opaque = true;
+        IndexType index_type = IndexType::UINT32;
+        uint64_t transform_address = 0;
+
+        uint64_t aabb_address = 0;
+        uint32_t aabb_stride = 0;
+
+        uint64_t instances_address = 0;
+        bool instances_array_of_pointers = false;
+
+        uint32_t primitive_count = 0;
+        uint32_t primitive_offset = 0;
+        uint32_t first_vertex = 0;
+        uint32_t transform_offset = 0;
+    };
+
+    struct AccelStructDescription {
+        AccelType type = AccelType::BOTTOM_LEVEL;
+        AccelBuildMode mode = AccelBuildMode::BUILD;
+        uint32_t flags = 0;
+        const AccelGeometry* geometries = nullptr;
+        uint32_t geometry_count = 0;
     };
 
 	struct ImageDescription {
@@ -227,6 +264,9 @@ namespace Nevarea {
 	NEVAREA_API Pipeline renderer_create_pipeline(RenderContext renderer, const PipelineDescription& description);
 	NEVAREA_API Pipeline renderer_create_compute_pipeline(RenderContext renderer, const char* compute);
 	NEVAREA_API void renderer_destroy_pipeline(RenderContext renderer, Pipeline pipeline);
+
+	NEVAREA_API AccelerationStructure renderer_create_acceleration_structure(RenderContext renderer, const AccelStructDescription& description);
+	NEVAREA_API void renderer_destroy_acceleration_structure(RenderContext renderer, AccelerationStructure acceleration_structure);
 
 	NEVAREA_API Image renderer_create_image(RenderContext renderer, const ImageDescription& description);
 	NEVAREA_API void renderer_destroy_image(RenderContext renderer, Image handle);

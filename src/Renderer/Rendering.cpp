@@ -287,6 +287,19 @@ namespace Nevarea {
 		}
 	}
 
+	AccelerationStructure renderer_create_acceleration_structure(RenderContext context, const AccelStructDescription& description) {
+	    RenderState* render_state = resolve(context);
+		if (render_state->api != RenderingAPI::VULKAN) return {};
+		Renderer::AccelStructHandle handle = Renderer::vulkan_create_acceleration_structure(render_state->vulkan.resource_manager, description);
+		return { handle.index, handle.generation };
+	}
+
+	void renderer_destroy_acceleration_structure(RenderContext context, AccelerationStructure acceleration_structure) {
+        RenderState* render_state = resolve(context);
+        if (render_state->api != RenderingAPI::VULKAN) return;
+        Renderer::vulkan_destroy_acceleration_structure(render_state->vulkan.resource_manager, { acceleration_structure.id, acceleration_structure.generation }, render_state->vulkan.frame_sync);
+	}
+
 	Image renderer_create_image(RenderContext context, const ImageDescription& description) {
 		RenderState* render_state = resolve(context);
 

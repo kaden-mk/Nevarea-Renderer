@@ -35,16 +35,11 @@ namespace Nevarea::Renderer {
 		bool is_valid() const { return index != UINT32_MAX; }
 	};
 
-	struct MeshData {
-		BufferHandle vertex_buffer;
-		uint64_t vertex_address;
-		uint32_t vertex_count;
-
-		BufferHandle index_buffer;
-		uint32_t index_count = 0;
-
-		uint32_t stride;
-	};
+	struct AccelStructHandle {
+        uint32_t index = UINT32_MAX;
+        uint32_t generation = 0;
+        bool is_valid() const { return index != UINT32_MAX; }
+    };
 
 	struct FormatInfo {
 		VkFormat vk;
@@ -139,12 +134,19 @@ namespace Nevarea::Renderer {
 		VkQueue upload_queue;
 
 		VkDevice device;
+		VkPhysicalDevice physical_device;
+
+		uint32_t scratch_alignment = 256;
 	};
 
 	VkFormat to_vk_format(Format format);
 
-	void vulkan_resources_init(ResourceManager& manager, VmaAllocator allocator, VkDevice device, VkQueue graphics_queue, uint32_t graphics_family_index);
+	void vulkan_resources_init(ResourceManager& manager, VmaAllocator allocator, VkDevice device, VkPhysicalDevice physical_device, VkQueue graphics_queue, uint32_t graphics_family_index);
 	void vulkan_resources_destroy(ResourceManager& manager);
+
+	AccelStructHandle vulkan_create_acceleration_structure(ResourceManager& manager, const AccelStructDescription& description);
+	uint64_t vulkan_get_accel_address(ResourceManager& manager, AccelStructHandle handle);
+	void vulkan_destroy_acceleration_structure(ResourceManager& manager, AccelStructHandle handle, FrameContext& frame);
 
 	void vulkan_immediate_submit(ResourceManager& manager, std::function<void(VkCommandBuffer)>&& record);
 

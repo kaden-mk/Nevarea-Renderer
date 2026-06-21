@@ -183,9 +183,60 @@ namespace Nevarea::Renderer {
         if (flags & ImageFlags::MUTABLE_FORMAT) out |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
         if (flags & ImageFlags::BLOCK_TEXEL_VIEW) out |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT;
         if (flags & ImageFlags::ARRAY_2D_COMPATIBLE) out |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
-        if (type == ImageType::CUBE || type == ImageType::CUBE_ARRAY)
-            out |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+        if (type == ImageType::CUBE || type == ImageType::CUBE_ARRAY) out |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 
+        return out;
+    }
+
+    VkAccelerationStructureTypeKHR to_vk_accel_type(AccelType type) {
+        switch (type) {
+            case AccelType::BOTTOM_LEVEL: return VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+            case AccelType::TOP_LEVEL: return VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+            case AccelType::GENERIC: return VK_ACCELERATION_STRUCTURE_TYPE_GENERIC_KHR;
+        }
+        return VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+    }
+
+    VkBuildAccelerationStructureModeKHR to_vk_build_mode(AccelBuildMode mode) {
+        switch (mode) {
+            case AccelBuildMode::BUILD: return VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+            case AccelBuildMode::UPDATE: return VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR;
+        }
+        return VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
+    }
+
+    VkGeometryTypeKHR to_vk_geometry_type(AccelGeometryType type) {
+        switch (type) {
+            case AccelGeometryType::TRIANGLES: return VK_GEOMETRY_TYPE_TRIANGLES_KHR;
+            case AccelGeometryType::AABBS: return VK_GEOMETRY_TYPE_AABBS_KHR;
+            case AccelGeometryType::INSTANCES: return VK_GEOMETRY_TYPE_INSTANCES_KHR;
+        }
+        return VK_GEOMETRY_TYPE_TRIANGLES_KHR;
+    }
+
+    VkIndexType to_vk_index_type(IndexType type) {
+        switch (type) {
+            case IndexType::NONE: return VK_INDEX_TYPE_NONE_KHR;
+            case IndexType::UINT16: return VK_INDEX_TYPE_UINT16;
+            case IndexType::UINT32: return VK_INDEX_TYPE_UINT32;
+        }
+        return VK_INDEX_TYPE_UINT32;
+    }
+
+    VkBuildAccelerationStructureFlagsKHR to_vk_accel_build_flags(uint32_t flags) {
+        VkBuildAccelerationStructureFlagsKHR out = 0;
+        if (flags & AccelBuildFlags::ALLOW_UPDATE) out |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR;
+        if (flags & AccelBuildFlags::ALLOW_COMPACTION) out |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR;
+        if (flags & AccelBuildFlags::PREFER_FAST_TRACE) out |= VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
+        if (flags & AccelBuildFlags::PREFER_FAST_BUILD) out |= VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR;
+        if (flags & AccelBuildFlags::LOW_MEMORY) out |= VK_BUILD_ACCELERATION_STRUCTURE_LOW_MEMORY_BIT_KHR;
+        return out;
+    }
+
+    VkGeometryFlagsKHR to_vk_geometry_flags(uint32_t flags) {
+        VkGeometryFlagsKHR out = 0;
+        if (flags & AccelGeometryFlags::OPAQUE_GEOMETRY) out |= VK_GEOMETRY_OPAQUE_BIT_KHR;
+        if (flags & AccelGeometryFlags::NO_DUPLICATE_ANY_HIT) out |= VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR;
         return out;
     }
 }

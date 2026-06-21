@@ -23,4 +23,10 @@ namespace Nevarea::Renderer {
 	VkBufferUsageFlags to_vk_buffer_usage(uint32_t usage);
 	VmaMemoryUsage to_vma_memory(MemoryLocation location);
 	VkImageCreateFlags to_vk_image_create_flags(uint32_t flags, ImageType type);
+	VkAccelerationStructureTypeKHR to_vk_accel_type(AccelType type);
+	VkBuildAccelerationStructureModeKHR to_vk_build_mode(AccelBuildMode mode);
+	VkGeometryTypeKHR to_vk_geometry_type(AccelGeometryType type);
+	VkIndexType to_vk_index_type(IndexType type);
+	VkBuildAccelerationStructureFlagsKHR to_vk_accel_build_flags(uint32_t flags);
+	VkGeometryFlagsKHR to_vk_geometry_flags(uint32_t flags);
 }

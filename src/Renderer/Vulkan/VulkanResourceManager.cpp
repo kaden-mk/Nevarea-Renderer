@@ -1,4 +1,5 @@
 #include "VulkanResourceManager.hpp"
+#include "Core/n_pch.hpp"
 #include "Renderer/Vulkan/VulkanFrames.hpp"
 #include "VulkanDebug.hpp"
 #include "VulkanTranslate.hpp"
@@ -24,6 +25,18 @@ namespace Nevarea::Renderer {
 		uint32_t bw = (width  + info.block_width  - 1) / info.block_width;
 		uint32_t bh = (height + info.block_height - 1) / info.block_height;
 		return static_cast<size_t>(bw) * bh * info.block_bytes;
+	}
+
+	static void query_acceleration_structure_properties(ResourceManager& manager) {
+	    VkPhysicalDeviceAccelerationStructurePropertiesKHR acceleration_structure_properties{};
+		acceleration_structure_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR;
+
+		VkPhysicalDeviceProperties2 device_properties{};
+		device_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+		device_properties.pNext = &acceleration_structure_properties;
+
+		vkGetPhysicalDeviceProperties2(manager.physical_device, &device_properties);
+		manager.scratch_alignment = acceleration_structure_properties.minAccelerationStructureScratchOffsetAlignment;
 	}
 
 	void vulkan_create_descriptor_pool(ResourceManager& manager) {
@@ -115,12 +128,14 @@ namespace Nevarea::Renderer {
         VK_ASSERT(vkAllocateCommandBuffers(manager.device, &alloc, &manager.upload_cmd));
 	}
 
-	void vulkan_resources_init(ResourceManager& manager, VmaAllocator allocator, VkDevice device, VkQueue graphics_queue, uint32_t graphics_family_index)
+	void vulkan_resources_init(ResourceManager& manager, VmaAllocator allocator, VkDevice device, VkPhysicalDevice physical_device, VkQueue graphics_queue, uint32_t graphics_family_index)
 	{
 		manager.allocator = allocator;
 		manager.device = device;
+		manager.physical_device = physical_device;
 		manager.upload_queue = graphics_queue;
 
+		query_acceleration_structure_properties(manager);
 		vulkan_create_descriptor_pool(manager);
 		vulkan_create_descriptor_layout(manager);
 		vulkan_init_descriptor_set(manager);
@@ -167,6 +182,140 @@ namespace Nevarea::Renderer {
 
 		vkDestroyDescriptorSetLayout(manager.device, manager.descriptor_layout, nullptr);
 		vkDestroyDescriptorPool(manager.device, manager.descriptor_pool, nullptr);
+	}
+
+	AccelStructHandle vulkan_create_acceleration_structure(ResourceManager& manager, const AccelStructDescription& description) {
+        NEVAREA_ASSERT(vkCreateAccelerationStructureKHR != nullptr, "RT",
+            "VK_KHR_acceleration_structure is not enabled! request it before you call create_blas");
+
+        std::vector<VkAccelerationStructureGeometryKHR> geometries(description.geometry_count);
+        std::vector<uint32_t> prim_counts(description.geometry_count);
+
+        for (uint32_t i = 0; i < description.geometry_count; i++) {
+            const AccelGeometry& accel = description.geometries[i];
+            VkAccelerationStructureGeometryKHR& accel_geometry = geometries[i];
+
+            accel_geometry = {};
+            accel_geometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+            accel_geometry.geometryType = to_vk_geometry_type(accel.type);
+            accel_geometry.flags = to_vk_geometry_flags(accel.flags);
+
+            switch (accel.type) {
+                case AccelGeometryType::TRIANGLES: {
+                    auto& triangles = accel_geometry.geometry.triangles;
+                    triangles = {};
+                    triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
+                    triangles.vertexFormat = to_vk_format(accel.vertex_format);
+                    triangles.vertexData.deviceAddress = accel.vertex_address;
+                    triangles.vertexStride = accel.vertex_stride;
+                    triangles.maxVertex = accel.max_vertex;
+                    triangles.indexType = to_vk_index_type(accel.index_type);
+                    triangles.indexData.deviceAddress = accel.index_address;
+                    triangles.transformData.deviceAddress = accel.transform_address;
+                    break;
+                }
+                case AccelGeometryType::AABBS: {
+                    auto& aabb = accel_geometry.geometry.aabbs;
+                    aabb = {};
+                    aabb.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR;
+                    aabb.data.deviceAddress = accel.aabb_address;
+                    aabb.stride = accel.aabb_stride;
+                    break;
+                }
+                case AccelGeometryType::INSTANCES: {
+                    auto& instance = accel_geometry.geometry.instances;
+                    instance = {};
+                    instance.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
+                    instance.arrayOfPointers = accel.instances_array_of_pointers ? VK_TRUE : VK_FALSE;
+                    instance.data.deviceAddress = accel.instances_address;
+                    break;
+                }
+            }
+
+            prim_counts[i] = accel.primitive_count;
+        }
+
+        VkAccelerationStructureBuildGeometryInfoKHR build{};
+        build.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
+        build.type = to_vk_accel_type(description.type);
+        build.mode = to_vk_build_mode(description.mode);
+        build.flags = to_vk_accel_build_flags(description.flags);
+        build.geometryCount = description.geometry_count;
+        build.pGeometries = geometries.data();
+
+        VkAccelerationStructureBuildSizesInfoKHR sizes{};
+        sizes.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
+        vkGetAccelerationStructureBuildSizesKHR(manager.device, VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, &build, prim_counts.data(), &sizes);
+
+        BufferDescription buffer_description{};
+        buffer_description.size = sizes.accelerationStructureSize;
+        buffer_description.usage = BufferUsage::ACCEL_STORAGE;
+        buffer_description.memory = MemoryLocation::GPU_ONLY;
+
+        BufferHandle backing = vulkan_create_buffer(manager, buffer_description);
+
+        VkAccelerationStructureKHR accel = VK_NULL_HANDLE;
+        VkAccelerationStructureCreateInfoKHR create_info{};
+        create_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
+        create_info.buffer = vulkan_get_buffer(manager, backing);
+        create_info.size = sizes.accelerationStructureSize;
+        create_info.type = to_vk_accel_type(description.type);
+        VK_ASSERT(vkCreateAccelerationStructureKHR(manager.device, &create_info, nullptr, &accel));
+
+        VkBuffer scratch_buffer;
+        VmaAllocation scratch_allocation;
+
+        VkBufferCreateInfo scratch_buffer_info{};
+        scratch_buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        scratch_buffer_info.size = sizes.buildScratchSize;
+        scratch_buffer_info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+
+        VmaAllocationCreateInfo scratch_allocation_info{};
+        scratch_allocation_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+        VK_ASSERT(vmaCreateBufferWithAlignment(manager.allocator, &scratch_buffer_info, &scratch_allocation_info,
+             manager.scratch_alignment, &scratch_buffer, &scratch_allocation, nullptr));
+
+        VkBufferDeviceAddressInfo scratch_address_device{};
+        scratch_address_device.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+        scratch_address_device.buffer = scratch_buffer;
+        build.scratchData.deviceAddress = vkGetBufferDeviceAddress(manager.device, &scratch_address_device);
+        build.dstAccelerationStructure = accel;
+
+        std::vector<VkAccelerationStructureBuildRangeInfoKHR> ranges(description.geometry_count);
+        for (uint32_t i = 0; i < description.geometry_count; i++) {
+            const AccelGeometry& geometry = description.geometries[i];
+            ranges[i] = { geometry.primitive_count, geometry.primitive_offset, geometry.first_vertex, geometry.transform_offset };
+        }
+
+        const VkAccelerationStructureBuildRangeInfoKHR* pranges = ranges.data();
+        vulkan_immediate_submit(manager, [&](VkCommandBuffer cmd) {
+            vkCmdBuildAccelerationStructuresKHR(cmd, 1, &build, &pranges);
+        });
+        vmaDestroyBuffer(manager.allocator, scratch_buffer, scratch_allocation);
+
+        VkAccelerationStructureDeviceAddressInfoKHR accel_device_info{};
+        accel_device_info.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
+        accel_device_info.accelerationStructure = accel;
+        uint64_t address = vkGetAccelerationStructureDeviceAddressKHR(manager.device, &accel_device_info);
+
+        uint32_t index = manager.accels.add({ accel, backing, address });
+        return { index, manager.accels.generations[index] };
+	}
+
+	uint64_t vulkan_get_accel_address(ResourceManager &manager, AccelStructHandle handle) {
+	    return manager.accels.get(handle.index, handle.generation).address;
+	}
+
+	void vulkan_destroy_acceleration_structure(ResourceManager &manager, AccelStructHandle handle, FrameContext &frame) {
+        AccelStructData& accel_data = manager.accels.get(handle.index, handle.generation);
+        VkAccelerationStructureKHR accel = accel_data.accel;
+        VkDevice device = manager.device;
+
+        vulkan_resources_push_deletor(frame.deletion_queues[frame.current_frame],
+            [device, accel]() { vkDestroyAccelerationStructureKHR(device, accel, nullptr); });
+
+        vulkan_destroy_buffer(manager, accel_data.backing, frame);
+        manager.accels.remove(handle.index);
 	}
 
 	void vulkan_immediate_submit(ResourceManager &manager, std::function<void (VkCommandBuffer)> &&record) {
