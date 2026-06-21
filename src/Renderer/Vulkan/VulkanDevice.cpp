@@ -389,9 +389,6 @@ namespace Nevarea::Renderer {
 
 		VK_ASSERT(vkCreateDevice(device_context->physical_device, &create_info, nullptr, &device_context->device));
 
-		if (device_context->capabilities.present_wait)
-            device_context->wait_for_present = reinterpret_cast<PFN_vkWaitForPresentKHR>(vkGetDeviceProcAddr(device_context->device, "vkWaitForPresentKHR"));
-
 		device_context->graphics_family_index = indices.graphics_family.value();
 		device_context->compute_family_index = indices.compute_family.value();
 		device_context->transfer_family_index = indices.transfer_family.value();

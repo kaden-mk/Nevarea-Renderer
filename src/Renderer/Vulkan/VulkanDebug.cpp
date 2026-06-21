@@ -1,10 +1,7 @@
 #include "VulkanDebug.hpp"
+#include "Core/n_pch.hpp"
 
 namespace Nevarea::Renderer {
-	namespace {
-		PFN_vkSetDebugUtilsObjectNameEXT pfn_set_debug_name = nullptr;
-	}
-
 	VKAPI_ATTR VkBool32 VKAPI_CALL debug_messenger_callback(
 		[[maybe_unused]] VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
 		[[maybe_unused]] VkDebugUtilsMessageTypeFlagsEXT message_type,
@@ -21,13 +18,7 @@ namespace Nevarea::Renderer {
 		const VkAllocationCallbacks* allocator,
 		VkDebugUtilsMessengerEXT* debug_messenger
 	) {
-		auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-		if (func != nullptr) {
-			return func(instance, create_info, allocator, debug_messenger);
-		}
-		else {
-			return VK_ERROR_EXTENSION_NOT_PRESENT;
-		}
+	    return vkCreateDebugUtilsMessengerEXT(instance, create_info, allocator, debug_messenger);
 	}
 
 	void destroy_debug_utils_messenger_ext(
@@ -35,8 +26,7 @@ namespace Nevarea::Renderer {
 		VkDebugUtilsMessengerEXT debug_messenger,
 		const VkAllocationCallbacks* allocator
 	) {
-		auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-		if (func != nullptr) func(instance, debug_messenger, allocator);
+        vkDestroyDebugUtilsMessengerEXT(instance, debug_messenger, allocator);
 	}
 
 	void populate_debug_create_info(VkDebugUtilsMessengerCreateInfoEXT& debug_create_info) {
@@ -47,19 +37,15 @@ namespace Nevarea::Renderer {
 		debug_create_info.pUserData = nullptr;
 	}
 
-	void vulkan_debug_init(VkDevice device) {
-		pfn_set_debug_name = reinterpret_cast<PFN_vkSetDebugUtilsObjectNameEXT>(vkGetDeviceProcAddr(device, "vkSetDebugUtilsObjectNameEXT"));
-	}
+	void vulkan_debug_init(VkDevice device) {}
 
 	void vulkan_set_debug_name(VkDevice device, VkObjectType type, uint64_t handle, const char* name) {
-		if (!pfn_set_debug_name) return;
-
 		VkDebugUtilsObjectNameInfoEXT info{};
 		info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
 		info.objectType = type;
 		info.objectHandle = handle;
 		info.pObjectName = name;
 
-		pfn_set_debug_name(device, &info);
+		vkSetDebugUtilsObjectNameEXT(device, &info);
 	}
 }

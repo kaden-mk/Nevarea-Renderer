@@ -25,7 +25,6 @@ namespace Nevarea::Renderer {
 	struct DeviceContext {
 		VkPhysicalDevice physical_device;
 		VkDevice device;
-		PFN_vkWaitForPresentKHR wait_for_present = nullptr;
 
 		VkQueue graphics_queue;
 		VkQueue present_queue;

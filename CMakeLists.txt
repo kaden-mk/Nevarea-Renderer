@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(NevareaRenderer LANGUAGES CXX)
+project(NevareaRenderer LANGUAGES CXX C)
 
 add_library(VulkanMemoryAllocator INTERFACE)
 target_include_directories(VulkanMemoryAllocator SYSTEM INTERFACE vendor/vma/)
@@ -26,11 +26,11 @@ add_library(NevareaRenderer ${NEVAREA_LIB_TYPE}
  "src/Renderer/Vulkan/VulkanAllocator.cpp" "src/Renderer/Vulkan/VulkanResourceManager.cpp" "src/Renderer/Vulkan/VulkanPipeline.cpp" "src/Renderer/Vulkan/VulkanDebug.cpp" "src/Renderer/Vulkan/VulkanTranslate.cpp" "src/Renderer/Vulkan/vulkan_interop.cpp")
 
 target_precompile_headers(NevareaRenderer PRIVATE
-    src/Core/n_pch.hpp
+  "$<$<COMPILE_LANGUAGE:CXX>:${CMAKE_CURRENT_SOURCE_DIR}/src/Core/n_pch.hpp>"
 )
 
 target_compile_definitions(NevareaRenderer PUBLIC
-    $<$<CONFIG:Debug,RelWithDebInfo>:NEVAREA_DEBUG>
+  $<$<CONFIG:Debug,RelWithDebInfo>:NEVAREA_DEBUG>
 )
 
 if(NEVAREA_BUILD_DYNAMIC)
@@ -42,9 +42,19 @@ target_include_directories(NevareaRenderer PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/in
 target_include_directories(NevareaRenderer PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 find_package(Vulkan REQUIRED)
-target_link_libraries(NevareaRenderer PRIVATE Vulkan::Vulkan)
+target_link_libraries(NevareaRenderer PRIVATE Vulkan::Headers)
 
 target_link_libraries(NevareaRenderer PRIVATE VulkanMemoryAllocator)
+
+target_sources(NevareaRenderer PRIVATE vendor/volk/volk.c)
+target_include_directories(NevareaRenderer SYSTEM PRIVATE vendor/volk/)
+if(WIN32)
+  target_compile_definitions(NevareaRenderer PRIVATE VK_USE_PLATFORM_WIN32_KHR)
+elseif(APPLE)
+  target_compile_definitions(NevareaRenderer PRIVATE VK_USE_PLATFORM_METAL_EXT)
+elseif(UNIX)
+  target_compile_definitions(NevareaRenderer PRIVATE VK_USE_PLATFORM_XLIB_KHR)
+endif()
 
 set_target_properties(NevareaRenderer PROPERTIES
     CXX_STANDARD 20

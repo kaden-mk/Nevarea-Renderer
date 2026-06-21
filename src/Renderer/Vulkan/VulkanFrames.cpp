@@ -1,4 +1,5 @@
 #include "VulkanFrames.hpp"
+#include "Core/n_pch.hpp"
 #include "lib/Rendering.hpp"
 #include "VulkanTranslate.hpp"
 
@@ -245,9 +246,9 @@ namespace Nevarea::Renderer {
 	}
 
 	bool vulkan_wait_for_present(DeviceContext &device, SwapchainContext &swapchain, uint64_t present_id, uint64_t timeout_ns) {
-        if (!device.capabilities.present_wait || !device.wait_for_present) return true;
+        if (!device.capabilities.present_wait) return true;
 
-        VkResult result = device.wait_for_present(device.device, swapchain.swapchain, present_id, timeout_ns);
+        VkResult result = vkWaitForPresentKHR(device.device, swapchain.swapchain, present_id, timeout_ns);
 		if (result == VK_TIMEOUT) return false;
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) return true;
 		if (result < 0) return false;
