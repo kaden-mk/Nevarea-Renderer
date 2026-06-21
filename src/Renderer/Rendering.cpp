@@ -341,7 +341,7 @@ namespace Nevarea {
         }
     }
 
-	void renderer_dispatch_compute(RenderContext context, Pipeline pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, const void* push, size_t size, Image storage_target) {
+	void renderer_dispatch_compute(RenderContext context, Pipeline pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, const void* push, size_t size) {
 		RenderState* render_state = resolve(context);
 
 		switch (render_state->api) {
@@ -350,7 +350,6 @@ namespace Nevarea {
                 NEVAREA_ASSERT(size <= sizeof(dispatch.push_data), "RENDERER", "push data exceeds 128 bytes");
                 memcpy(dispatch.push_data, push, size);
                 dispatch.push_size = (uint32_t)size;
-                dispatch.target_image = { storage_target.id, storage_target.generation };
                 render_state->vulkan.compute_dispatches.push_back(dispatch);
 
    			    break;
@@ -358,19 +357,6 @@ namespace Nevarea {
 
     		case RenderingAPI::NONE:
     			break;
-		}
-	}
-
-	void renderer_present_image(RenderContext context, Image handle) {
-		RenderState* render_state = resolve(context);
-
-		switch (render_state->api) {
-			case RenderingAPI::VULKAN:
-				render_state->vulkan.present_target = { handle.id, handle.generation };
-				break;
-
-			case RenderingAPI::NONE:
-				break;
 		}
 	}
 

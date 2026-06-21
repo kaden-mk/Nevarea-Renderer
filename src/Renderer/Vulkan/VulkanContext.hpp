@@ -31,7 +31,6 @@ namespace Nevarea::Renderer {
 
 		uint8_t push_data[NEVAREA_MAX_PUSH_CONSTANTS_SIZE];
 		uint32_t push_size;
-		ImageHandle target_image = { UINT32_MAX, 0 };
 	};
 
 	struct PassData {
@@ -58,7 +57,6 @@ namespace Nevarea::Renderer {
 		SurfaceContext surface;
 		SwapchainContext swapchain;
 		FrameContext frame_sync;
-		ImageHandle present_target = { UINT32_MAX, 0 };
 
 		std::vector<InteropRecord> interop_records;
 

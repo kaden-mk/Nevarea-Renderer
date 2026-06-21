@@ -3,10 +3,6 @@
 #include "WindowSystem.hpp"
 #include "Core.hpp"
 
-#ifndef MAX_FRAMES_IN_FLIGHT
-#define MAX_FRAMES_IN_FLIGHT 2
-#endif
-
 namespace Nevarea {
 	enum class RenderingAPI : uint32_t { NONE, VULKAN };
 
@@ -15,7 +11,7 @@ namespace Nevarea {
         R8_UNORM, RG8_UNORM, RGBA8_UNORM, RGBA8_SRGB, BGRA8_UNORM, BGRA8_SRGB,
         // float
         R16_SFLOAT, RG16_SFLOAT, RGBA16_SFLOAT,
-        R32_SFLOAT, RG32_SFLOAT, RGBA32_SFLOAT,
+        R32_SFLOAT, RG32_SFLOAT, RGB32_SFLOAT, RGBA32_SFLOAT,
         // packed
         RGB10A2_UNORM, RG11B10_UFLOAT,
         // integer
@@ -43,12 +39,6 @@ namespace Nevarea {
         D1_ARRAY, D2_ARRAY,
         CUBE, CUBE_ARRAY,
     };
-
-	enum class VertexFormat : uint32_t {
-	    FLOAT, FLOAT2, FLOAT3, FLOAT4,
-		UNORM8x4,
-		UINT, UINT2, UINT4
-	};
 
     enum class LoadOp : uint32_t { LOAD, CLEAR, DONT_CARE };
     enum class StoreOp : uint32_t { STORE, DONT_CARE };
@@ -107,17 +97,21 @@ namespace Nevarea {
 		bool is_valid() const { return id != UINT32_MAX; };
 	};
 
+	struct AccelerationStructure {
+        uint32_t id = UINT32_MAX;
+        uint32_t generation = 0;
+        bool is_valid() const { return id != UINT32_MAX; }
+    };
 
-	struct VertexAttribute {
-   	    uint32_t location;
-        VertexFormat format;
-        uint32_t offset;
-   	};
 
-    struct VertexLayout {
-        const VertexAttribute* attributes;
-        uint32_t attribute_count;
-        uint32_t stride;
+    struct BlasGeometry {
+        uint64_t vertex_address = 0;
+        Format vertex_format = Format::RGB32_SFLOAT;
+        uint32_t vertex_stride = 0;
+        uint32_t vertex_count = 0;
+        uint64_t index_address = 0;
+        uint32_t index_count = 0;
+        bool opaque = true;
     };
 
 	struct ImageDescription {
@@ -169,20 +163,6 @@ namespace Nevarea {
         float clear[4] = { 0.f, 0.f, 0.f, 1.f };
     };
 
-    struct DepthAttachment {
-        Image image;
-        LoadOp load = LoadOp::CLEAR;
-        StoreOp store = StoreOp::STORE;
-        float clear = 1.0f;
-    };
-
-    struct RenderPassDescription {
-        const ColorAttachment* color = nullptr;
-        uint32_t color_count = 0;
-        DepthAttachment depth;
-        bool present = false;
-    };
-
     struct PipelineDescription {
         const char* vertex_shader = nullptr;
         const char* fragment_shader = nullptr;
@@ -199,6 +179,20 @@ namespace Nevarea {
         Format depth_format = Format::COUNT;
 
         bool blend_enable = false;
+    };
+
+    struct DepthAttachment {
+        Image image;
+        LoadOp load = LoadOp::CLEAR;
+        StoreOp store = StoreOp::STORE;
+        float clear = 1.0f;
+    };
+
+    struct RenderPassDescription {
+        const ColorAttachment* color = nullptr;
+        uint32_t color_count = 0;
+        DepthAttachment depth;
+        bool present = false;
     };
 
     struct DrawCommand {
@@ -241,8 +235,7 @@ namespace Nevarea {
 	NEVAREA_API void renderer_destroy_sampler(RenderContext renderer, Sampler sampler);
 
 	NEVAREA_API void renderer_submit(RenderContext renderer, const DrawCommand& draw);
-	NEVAREA_API void renderer_dispatch_compute(RenderContext renderer, Pipeline pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, const void* push, size_t size, Image storage_target);
-	NEVAREA_API void renderer_present_image(RenderContext renderer, Image handle);
+	NEVAREA_API void renderer_dispatch_compute(RenderContext renderer, Pipeline pipeline, uint32_t groups_x, uint32_t groups_y, uint32_t groups_z, const void* push, size_t size);
 	NEVAREA_API void renderer_upload_image(RenderContext renderer, Image handle, const void* pixels, size_t size);
 
 	NEVAREA_API Buffer renderer_create_buffer(RenderContext context, const BufferDescription& description);

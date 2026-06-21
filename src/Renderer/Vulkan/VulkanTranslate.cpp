@@ -54,21 +54,6 @@ namespace Nevarea::Renderer {
 		return VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
 	}
 
-	VkFormat to_vk_vertex_format(Nevarea::VertexFormat format) {
-	    switch (format) {
-			case VertexFormat::FLOAT: return VK_FORMAT_R32_SFLOAT;
-			case VertexFormat::FLOAT2: return VK_FORMAT_R32G32_SFLOAT;
-			case VertexFormat::FLOAT3: return VK_FORMAT_R32G32B32_SFLOAT;
-			case VertexFormat::FLOAT4: return VK_FORMAT_R32G32B32A32_SFLOAT;
-			case VertexFormat::UNORM8x4: return VK_FORMAT_R8G8B8A8_UNORM;
-			case VertexFormat::UINT: return VK_FORMAT_R32_UINT;
-			case VertexFormat::UINT2: return VK_FORMAT_R32G32_UINT;
-			case VertexFormat::UINT4: return VK_FORMAT_R32G32B32A32_UINT;
-		}
-
-		return VK_FORMAT_R32G32B32A32_SFLOAT;
-	}
-
 	VkAttachmentLoadOp to_vk_load_op(LoadOp op) {
 	    switch (op) {
 			case LoadOp::LOAD: return VK_ATTACHMENT_LOAD_OP_LOAD;

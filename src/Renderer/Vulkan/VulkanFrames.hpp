@@ -11,7 +11,6 @@ namespace Nevarea::Renderer {
 		VkPipelineStageFlags2 dst_stage, VkAccessFlags2 dst_access,
         VkImageAspectFlags aspect = VK_IMAGE_ASPECT_COLOR_BIT);
 
-	void blit_image(VkCommandBuffer cmd, VkImage src, VkImage dst, VkExtent2D src_extent, VkExtent2D dst_extent);
 	void end_frame_present(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkCommandBuffer cmd);
 
 	VkCommandBuffer begin_frame(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window);

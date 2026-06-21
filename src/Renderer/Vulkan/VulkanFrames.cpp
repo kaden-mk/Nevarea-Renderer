@@ -216,28 +216,6 @@ namespace Nevarea::Renderer {
 		vkCmdPipelineBarrier2(cmd, &dep);
 	}
 
-	void blit_image(VkCommandBuffer cmd, VkImage src, VkImage dst, VkExtent2D src_extent, VkExtent2D dst_extent)
-	{
-		VkImageBlit2 region{};
-		region.sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2;
-		region.srcOffsets[1] = { static_cast<int32_t>(src_extent.width), static_cast<int32_t>(src_extent.height), 1 };
-		region.dstOffsets[1] = { static_cast<int32_t>(dst_extent.width), static_cast<int32_t>(dst_extent.height), 1 };
-		region.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
-		region.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
-
-		VkBlitImageInfo2 blit{};
-		blit.sType = VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2;
-		blit.srcImage = src;
-		blit.srcImageLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-		blit.dstImage = dst;
-		blit.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		blit.regionCount = 1;
-		blit.pRegions = &region;
-		blit.filter = VK_FILTER_LINEAR;
-
-		vkCmdBlitImage2(cmd, &blit);
-	}
-
 	void end_frame_present(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkCommandBuffer cmd)
 	{
 		VK_ASSERT(vkEndCommandBuffer(cmd));

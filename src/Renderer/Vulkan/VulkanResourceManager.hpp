@@ -66,6 +66,7 @@ namespace Nevarea::Renderer {
 		{ VK_FORMAT_R16G16B16A16_SFLOAT, 8, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT },
 		{ VK_FORMAT_R32_SFLOAT, 4, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT },
 		{ VK_FORMAT_R32G32_SFLOAT, 8, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT },
+		{ VK_FORMAT_R32G32B32_SFLOAT, 12, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT },
 		{ VK_FORMAT_R32G32B32A32_SFLOAT, 16, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT },
 		{ VK_FORMAT_A2B10G10R10_UNORM_PACK32, 4, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT },
 		{ VK_FORMAT_B10G11R11_UFLOAT_PACK32, 4, 1, 1, VK_IMAGE_ASPECT_COLOR_BIT },
@@ -108,9 +109,20 @@ namespace Nevarea::Renderer {
         bool alive(uint32_t index, uint32_t gen) const { return index < data.size() && gen == generations[index]; }
 	};
 
-	struct BufferData { VkBuffer buffer; VmaAllocation allocation; uint64_t address; };
+	struct BufferData {
+        VkBuffer buffer;
+        VmaAllocation allocation;
+        uint64_t address;
+	};
+
+	struct AccelStructData {
+	    VkAccelerationStructureKHR accel = VK_NULL_HANDLE;
+		BufferHandle backing;
+		uint64_t address;
+	};
 
 	struct ResourceManager {
+	    Pool<AccelStructData> accels;
     	Pool<BufferData> buffers;
         Pool<AllocatedImage> images;
         Pool<VkSampler> samplers;
