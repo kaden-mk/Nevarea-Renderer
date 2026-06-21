@@ -43,7 +43,8 @@ namespace Nevarea::Renderer {
 	struct InteropRecord {
 	    void (*fn)(VkCommandBuffer cmd, void* user);
 		void* user;
-		uint32_t after;
+		uint32_t at;
+		bool in_scope;
 	};
 
 	struct VulkanContext {

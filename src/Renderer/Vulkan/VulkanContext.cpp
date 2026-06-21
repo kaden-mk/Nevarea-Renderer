@@ -221,9 +221,9 @@ namespace Nevarea::Renderer {
 
 		bool any_present = false;
 
-		auto fire_interop = [&](uint32_t pass_count) {
+		auto fire_interop = [&](uint32_t boundary) {
             for (InteropRecord& record : context.interop_records)
-                if (record.after == pass_count) record.fn(cmd, record.user);
+                if (!record.in_scope && record.at == boundary) record.fn(cmd, record.user);
         };
 
 		uint32_t pass_index = 0;
@@ -280,6 +280,9 @@ namespace Nevarea::Renderer {
                 }
     			bucket.items.clear();
     		}
+
+            for (InteropRecord& record : context.interop_records)
+                if (record.in_scope && record.at == pass_index) record.fn(cmd, record.user);
 
             vkCmdEndRendering(cmd);
 

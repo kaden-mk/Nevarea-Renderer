@@ -9,6 +9,32 @@ namespace Nevarea {
                   vk.device.graphics_queue, vk.device.graphics_family_index };
     }
 
+    VulkanSwapchainInfo renderer_vk_swapchain_info(RenderContext context) {
+        Renderer::VulkanContext& vk = resolve(context)->vulkan;
+        uint32_t count = (uint32_t)vk.swapchain.images.size();
+        return { vk.swapchain.image_format, count, count };
+    }
+
+    PFN_vkGetInstanceProcAddr renderer_vk_instance_proc_addr(RenderContext) {
+        return ::vkGetInstanceProcAddr;
+    }
+
+    VkDescriptorPool renderer_vk_create_descriptor_pool(RenderContext context, const VkDescriptorPoolCreateInfo* info) {
+        Renderer::VulkanContext& vk = resolve(context)->vulkan;
+        VkDescriptorPool pool = VK_NULL_HANDLE;
+        vkCreateDescriptorPool(vk.device.device, info, nullptr, &pool);
+        return pool;
+    }
+
+    void renderer_vk_destroy_descriptor_pool(RenderContext context, VkDescriptorPool pool) {
+        Renderer::VulkanContext& vk = resolve(context)->vulkan;
+        vkDestroyDescriptorPool(vk.device.device, pool, nullptr);
+    }
+
+    void renderer_vk_device_wait_idle(RenderContext context) {
+        vkDeviceWaitIdle(resolve(context)->vulkan.device.device);
+    }
+
     VulkanImage renderer_vk_image(RenderContext context, Image image) {
         Renderer::VulkanContext& vk = resolve(context)->vulkan;
         Renderer::AllocatedImage& img = Renderer::vulkan_get_image(vk.resource_manager, { image.id, image.generation });
@@ -50,7 +76,12 @@ namespace Nevarea {
 
     void renderer_vk_record_inline(RenderContext context, void (*fn)(VkCommandBuffer cmd, void* user), void* user) {
         Renderer::VulkanContext& vk = resolve(context)->vulkan;
-        vk.interop_records.push_back({ fn, user, (uint32_t)vk.passes.size() });
+        vk.interop_records.push_back({ fn, user, (uint32_t)vk.passes.size(), false });
+    }
+
+    void renderer_vk_record_in_pass(RenderContext context, uint32_t pass_index, void (*fn)(VkCommandBuffer cmd, void* user), void* user) {
+        Renderer::VulkanContext& vk = resolve(context)->vulkan;
+        vk.interop_records.push_back({ fn, user, pass_index, true });
     }
 
     void renderer_vk_request_features(RenderContext context, const void* feature_chain) {
