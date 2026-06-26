@@ -91,14 +91,19 @@ namespace Nevarea::Renderer {
 		vkCmdBeginRendering(cmd, &rendering_info);
 	}
 
-	static NEVAREA_FORCE_INLINE void handle_queues(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkCommandBuffer cmd, VkPipelineStageFlags2 image_stage) {
+	static NEVAREA_FORCE_INLINE void handle_queues(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkCommandBuffer cmd, VkPipelineStageFlags2 image_stage, VkSemaphore transfer_timeline, uint64_t transfer_wait_value) {
 		uint32_t img_idx = swapchain.current_image_index;
 		VkSemaphore signal_semaphores[] = { frame.render_finished[img_idx] };
 
-		VkSemaphoreSubmitInfo wait_info{};
-		wait_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
-		wait_info.semaphore = frame.image_available[frame.current_frame];
-		wait_info.stageMask = image_stage;
+		VkSemaphoreSubmitInfo waits[2]{};
+		waits[0].sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+		waits[0].semaphore = frame.image_available[frame.current_frame];
+		waits[0].stageMask = image_stage;
+
+		waits[1].sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+		waits[1].semaphore = transfer_timeline;
+		waits[1].value = transfer_wait_value;
+		waits[1].stageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 
 		uint64_t signal_value = ++frame.timeline_value;
 
@@ -118,8 +123,8 @@ namespace Nevarea::Renderer {
 
 		VkSubmitInfo2 submit_info{};
 		submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
-		submit_info.waitSemaphoreInfoCount = 1;
-		submit_info.pWaitSemaphoreInfos = &wait_info;
+		submit_info.waitSemaphoreInfoCount = 2;
+		submit_info.pWaitSemaphoreInfos = waits;
 		submit_info.signalSemaphoreInfoCount = 2;
 		submit_info.pSignalSemaphoreInfos = signal_infos;
 		submit_info.commandBufferInfoCount = 1;
@@ -158,7 +163,7 @@ namespace Nevarea::Renderer {
 		}
 	}
 
-	void end_frame_rendering(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkCommandBuffer cmd, bool any_present)
+	void end_frame_rendering(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkCommandBuffer cmd, bool any_present, VkSemaphore transfer_timeline, uint64_t transfer_wait_value)
 	{
 	    if (any_present) {
     		VkImageMemoryBarrier2 end_barrier{};
@@ -187,7 +192,7 @@ namespace Nevarea::Renderer {
 
 		VK_ASSERT(vkEndCommandBuffer(cmd));
 
-		handle_queues(frame, swapchain, device, surface, window, cmd, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT);
+		handle_queues(frame, swapchain, device, surface, window, cmd, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, transfer_timeline, transfer_wait_value);
 		frame.current_frame = (frame.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
 
@@ -216,10 +221,10 @@ namespace Nevarea::Renderer {
 		vkCmdPipelineBarrier2(cmd, &dep);
 	}
 
-	void end_frame_present(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkCommandBuffer cmd)
+	void end_frame_present(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkCommandBuffer cmd, VkSemaphore transfer_timeline, uint64_t transfer_wait_value)
 	{
 		VK_ASSERT(vkEndCommandBuffer(cmd));
-		handle_queues(frame, swapchain, device, surface, window, cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT);
+		handle_queues(frame, swapchain, device, surface, window, cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, transfer_timeline, transfer_wait_value);
 		frame.current_frame = (frame.current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
 

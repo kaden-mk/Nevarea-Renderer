@@ -137,7 +137,7 @@ namespace Nevarea::Renderer {
 		vulkan_device_init(context.device, context.instance, context.surface.surface);
 		volkLoadDevice(context.device.device);
 		vulkan_context_create_allocator(context.instance, context.device.physical_device, context.device.device, context.allocator, context.device.capabilities.memory_priority);
-		vulkan_resources_init(context.resource_manager, context.allocator, context.device.device, context.device.physical_device, context.device.graphics_queue, context.device.graphics_family_index, context.device.enabled_extensions);
+		vulkan_resources_init(context.resource_manager, context.allocator, context.device);
 		vulkan_swapchain_init(context.swapchain, context.device, context.surface, context.window);
 		vulkan_frame_sync_init(context.frame_sync, context.device, static_cast<uint32_t>(context.swapchain.images.size()));
 	}
@@ -149,6 +149,21 @@ namespace Nevarea::Renderer {
 	    VkImageAspectFlags aspect = k_format_info[(uint32_t)img.format].aspect;
 		transition_image(cmd, img.image, img.current_layout, new_layout, src_stage, src_access, dst_stage, dst_access, aspect);
 		img.current_layout = new_layout;
+	}
+
+	static void reclaim_transfers(ResourceManager& manager) {
+	    uint64_t done = 0;
+		vkGetSemaphoreCounterValue(manager.device, manager.transfer_timeline, &done);
+
+		auto& pending = manager.pending_uploads;
+		for (size_t i = 0; i < pending.size();) {
+		    if (pending[i].value <= done) {
+				vmaDestroyBuffer(manager.allocator, pending[i].staging, pending[i].allocation);
+				manager.free_transfer_cmds.push_back(pending[i].cmd);
+				pending[i] = pending.back();
+				pending.pop_back();
+			} else ++i;
+		}
 	}
 
 	void vulkan_context_draw(VulkanContext& context) {
@@ -163,6 +178,8 @@ namespace Nevarea::Renderer {
 
             return;
         }
+
+        reclaim_transfers(context.resource_manager);
 
 		VkCommandBuffer cmd = begin_frame(context.frame_sync, context.swapchain, context.device, context.surface, context.window);
 		if (cmd == VK_NULL_HANDLE) return;
@@ -300,7 +317,9 @@ namespace Nevarea::Renderer {
 		context.interop_records.clear();
 
 		end_frame_rendering(context.frame_sync, context.swapchain, context.device,
-	        context.surface, context.window, cmd, any_present);
+	        context.surface, context.window, cmd, any_present,
+		    context.resource_manager.transfer_timeline,
+		    context.resource_manager.transfer_value);
 	}
 
 	void vulkan_context_destroy(VulkanContext& context)

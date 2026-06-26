@@ -11,11 +11,11 @@ namespace Nevarea::Renderer {
 		VkPipelineStageFlags2 dst_stage, VkAccessFlags2 dst_access,
         VkImageAspectFlags aspect = VK_IMAGE_ASPECT_COLOR_BIT);
 
-	void end_frame_present(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkCommandBuffer cmd);
+	void end_frame_present(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkCommandBuffer cmd, VkSemaphore transfer_timeline, uint64_t transfer_wait_value);
 
 	VkCommandBuffer begin_frame(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window);
 	void begin_rendering(VkCommandBuffer cmd, const PassData& pass, SwapchainContext& swapchain, ResourceManager& resources);
-	void end_frame_rendering(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkCommandBuffer cmd, bool any_present);
+	void end_frame_rendering(FrameContext& frame, SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkCommandBuffer cmd, bool any_present, VkSemaphore transfer_timeline, uint64_t transfer_wait_value);
 
 	bool vulkan_wait_for_present(DeviceContext& device, SwapchainContext& swapchain, uint64_t present_id, uint64_t timeout_ns);
 }

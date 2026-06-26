@@ -71,6 +71,14 @@ namespace Nevarea::Renderer {
 		{ VK_FORMAT_D32_SFLOAT, 4, 1, 1, VK_IMAGE_ASPECT_DEPTH_BIT },
 		{ VK_FORMAT_D24_UNORM_S8_UINT, 4, 1, 1, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT },
 		{ VK_FORMAT_D32_SFLOAT_S8_UINT, 8, 1, 1, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT },
+		{ VK_FORMAT_BC1_RGBA_UNORM_BLOCK, 8, 4, 4, VK_IMAGE_ASPECT_COLOR_BIT },
+        { VK_FORMAT_BC1_RGBA_SRGB_BLOCK, 8, 4, 4, VK_IMAGE_ASPECT_COLOR_BIT },
+        { VK_FORMAT_BC3_UNORM_BLOCK, 16, 4, 4, VK_IMAGE_ASPECT_COLOR_BIT },
+        { VK_FORMAT_BC3_SRGB_BLOCK, 16, 4, 4, VK_IMAGE_ASPECT_COLOR_BIT },
+        { VK_FORMAT_BC4_UNORM_BLOCK, 8, 4, 4, VK_IMAGE_ASPECT_COLOR_BIT },
+        { VK_FORMAT_BC5_UNORM_BLOCK, 16, 4, 4, VK_IMAGE_ASPECT_COLOR_BIT },
+        { VK_FORMAT_BC7_UNORM_BLOCK, 16, 4, 4, VK_IMAGE_ASPECT_COLOR_BIT },
+        { VK_FORMAT_BC7_SRGB_BLOCK, 16, 4, 4, VK_IMAGE_ASPECT_COLOR_BIT },
 	};
 
 	template<class T>
@@ -125,6 +133,18 @@ namespace Nevarea::Renderer {
 		bool update_after_bind;
 	};
 
+	struct PendingUpload {
+	    VkBuffer staging;
+		VmaAllocation allocation;
+		VkCommandBuffer cmd;
+		uint64_t value;
+	};
+
+	struct TransferSubmit {
+	    uint64_t value;
+		VkCommandBuffer cmd;
+	};
+
 	struct ResourceManager {
 	    Pool<AccelStructData> accels;
     	Pool<BufferData> buffers;
@@ -144,6 +164,17 @@ namespace Nevarea::Renderer {
 		VkFence upload_fence;
 		VkQueue upload_queue;
 
+		VkQueue transfer_queue;
+		uint32_t transfer_family;
+		uint32_t graphics_family;
+
+		VkCommandPool transfer_pool;
+		VkSemaphore transfer_timeline;
+		uint64_t transfer_value = 0;
+
+		std::vector<PendingUpload> pending_uploads;
+		std::vector<VkCommandBuffer> free_transfer_cmds;
+
 		VkDevice device;
 		VkPhysicalDevice physical_device;
 
@@ -152,7 +183,7 @@ namespace Nevarea::Renderer {
 
 	VkFormat to_vk_format(Format format);
 
-	void vulkan_resources_init(ResourceManager& manager, VmaAllocator allocator, VkDevice device, VkPhysicalDevice physical_device, VkQueue graphics_queue, uint32_t graphics_family_index, const std::vector<const char*>& enabled_extensions);
+	void vulkan_resources_init(ResourceManager& manager, VmaAllocator allocator, const DeviceContext& device);
 	void vulkan_resources_destroy(ResourceManager& manager);
 
 	AccelStructHandle vulkan_create_acceleration_structure(ResourceManager& manager, const AccelStructDescription& description);

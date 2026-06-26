@@ -116,11 +116,11 @@ namespace Nevarea::Renderer {
 		VK_NAME(manager.device, VK_OBJECT_TYPE_DESCRIPTOR_SET, manager.descriptor_set, "descriptor_set");
 	}
 
-	void vulkan_create_command_pool(ResourceManager& manager, uint32_t queue_family_index) {
+	void vulkan_create_command_pool(ResourceManager& manager) {
 	    VkCommandPoolCreateInfo create_info{};
 		create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		create_info.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
-		create_info.queueFamilyIndex = queue_family_index;
+		create_info.queueFamilyIndex = manager.graphics_family;
 		VK_ASSERT(vkCreateCommandPool(manager.device, &create_info, nullptr, &manager.upload_pool));
 
         VkFenceCreateInfo fence_info{};
@@ -136,24 +136,50 @@ namespace Nevarea::Renderer {
         VK_ASSERT(vkAllocateCommandBuffers(manager.device, &alloc, &manager.upload_cmd));
 	}
 
-	void vulkan_resources_init(ResourceManager& manager, VmaAllocator allocator, VkDevice device, VkPhysicalDevice physical_device, VkQueue graphics_queue, uint32_t graphics_family_index, const std::vector<const char*>& enabled_extensions)
+	void vulkan_init_timeline(ResourceManager& manager) {
+        VkSemaphoreTypeCreateInfo type_info{};
+        type_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        type_info.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+        type_info.initialValue = 0;
+
+        VkSemaphoreCreateInfo sem_info{};
+        sem_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        sem_info.pNext = &type_info;
+        VK_ASSERT(vkCreateSemaphore(manager.device, &sem_info, nullptr, &manager.transfer_timeline));
+
+        manager.transfer_value = 0;
+
+        VkCommandPoolCreateInfo pool_info{};
+        pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        pool_info.queueFamilyIndex = manager.transfer_family;
+        VK_ASSERT(vkCreateCommandPool(manager.device, &pool_info, nullptr, &manager.transfer_pool));
+	}
+
+	void vulkan_resources_init(ResourceManager& manager, VmaAllocator allocator, const DeviceContext& device)
 	{
 		manager.allocator = allocator;
-		manager.device = device;
-		manager.physical_device = physical_device;
-		manager.upload_queue = graphics_queue;
-		manager.enabled_extensions = enabled_extensions;
+		manager.device = device.device;
+		manager.physical_device = device.physical_device;
+		manager.upload_queue = device.graphics_queue;
+		manager.enabled_extensions = device.enabled_extensions;
+		manager.transfer_queue = device.transfer_queue;
+		manager.transfer_family = device.transfer_family_index;
+		manager.graphics_family = device.graphics_family_index;
 
 		query_acceleration_structure_properties(manager);
 		vulkan_create_descriptor_pool(manager);
 		vulkan_create_descriptor_layout(manager);
 		vulkan_init_descriptor_set(manager);
-		vulkan_create_command_pool(manager, graphics_family_index);
+		vulkan_create_command_pool(manager);
+		vulkan_init_timeline(manager);
 	}
 
 	void vulkan_resources_destroy(ResourceManager& manager)
 	{
-		for (size_t i = 0; i < manager.buffers.data.size(); ++i) {
+    	vkQueueWaitIdle(manager.transfer_queue);
+
+    	for (size_t i = 0; i < manager.buffers.data.size(); ++i) {
 			if (manager.buffers.data[i].buffer != VK_NULL_HANDLE) {
 				std::cerr << "[NEVAREA]: [RESOURCE MANAGER] Leaked buffer at slot " << i << std::endl;
 				vmaDestroyBuffer(manager.allocator, manager.buffers.data[i].buffer, manager.buffers.data[i].allocation);
@@ -188,6 +214,13 @@ namespace Nevarea::Renderer {
 
 		vkDestroyFence(manager.device, manager.upload_fence, nullptr);
 		vkDestroyCommandPool(manager.device, manager.upload_pool, nullptr);
+
+        for (auto& upload : manager.pending_uploads)
+            vmaDestroyBuffer(manager.allocator, upload.staging, upload.allocation);
+
+        manager.pending_uploads.clear();
+        vkDestroyCommandPool(manager.device, manager.transfer_pool, nullptr);
+        vkDestroySemaphore(manager.device, manager.transfer_timeline, nullptr);
 
 		vkDestroyDescriptorSetLayout(manager.device, manager.descriptor_layout, nullptr);
 		vkDestroyDescriptorPool(manager.device, manager.descriptor_pool, nullptr);
@@ -385,7 +418,15 @@ namespace Nevarea::Renderer {
 		buffer_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 		buffer_create_info.size = buffer_description.size;
 		buffer_create_info.usage = to_vk_buffer_usage(buffer_description.usage) | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
-		buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		uint32_t families[2] = { manager.graphics_family, manager.transfer_family };
+        if (manager.graphics_family != manager.transfer_family) {
+            buffer_create_info.sharingMode = VK_SHARING_MODE_CONCURRENT;
+            buffer_create_info.queueFamilyIndexCount = 2;
+            buffer_create_info.pQueueFamilyIndices = families;
+        } else {
+            buffer_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        }
 
 		VmaAllocationCreateInfo allocation_create_info{};
 		allocation_create_info.usage = to_vma_memory(buffer_description.memory);
@@ -417,6 +458,52 @@ namespace Nevarea::Renderer {
 	    return manager.buffers.get(handle.index, handle.generation).address;
 	}
 
+	static TransferSubmit submit_transfer(ResourceManager& manager, std::function<void(VkCommandBuffer)>&& record) {
+	    VkCommandBuffer cmd;
+
+	    if (!manager.free_transfer_cmds.empty()) {
+            cmd = manager.free_transfer_cmds.back(); manager.free_transfer_cmds.pop_back();
+            vkResetCommandBuffer(cmd, 0);
+        } else {
+            VkCommandBufferAllocateInfo allocate_info{};
+            allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            allocate_info.commandPool = manager.transfer_pool;
+            allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            allocate_info.commandBufferCount = 1;
+            VK_ASSERT(vkAllocateCommandBuffers(manager.device, &allocate_info, &cmd));
+        }
+
+		VkCommandBufferBeginInfo begin_info{};
+		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+        VK_ASSERT(vkBeginCommandBuffer(cmd, &begin_info));
+        record(cmd);
+        VK_ASSERT(vkEndCommandBuffer(cmd));
+
+        uint64_t value = ++manager.transfer_value;
+
+        VkCommandBufferSubmitInfo submit_info{};
+        submit_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO;
+        submit_info.commandBuffer = cmd;
+
+        VkSemaphoreSubmitInfo signal{};
+        signal.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO;
+        signal.semaphore = manager.transfer_timeline;
+        signal.value = value;
+        signal.stageMask = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT;
+
+        VkSubmitInfo2 submit{};
+        submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2;
+        submit.commandBufferInfoCount = 1;
+        submit.pCommandBufferInfos = &submit_info;
+        submit.signalSemaphoreInfoCount = 1;
+        submit.pSignalSemaphoreInfos = &signal;
+
+        VK_ASSERT(vkQueueSubmit2(manager.transfer_queue, 1, &submit, VK_NULL_HANDLE));
+        return { value, cmd };
+	}
+
 	void vulkan_upload_buffer(ResourceManager& manager, BufferHandle dst, const void* data, size_t size) {
 	    VkBuffer dst_buffer = vulkan_get_buffer(manager, dst);
 
@@ -438,12 +525,18 @@ namespace Nevarea::Renderer {
         memcpy(mapped, data, size);
         vmaUnmapMemory(manager.allocator, staging_alloc);
 
-        vulkan_immediate_submit(manager, [&](VkCommandBuffer cmd) {
+        /*vulkan_immediate_submit(manager, [&](VkCommandBuffer cmd) {
+            VkBufferCopy region{ 0, 0, size };
+            vkCmdCopyBuffer(cmd, staging_buffer, dst_buffer, 1, &region);
+            });*/
+
+        //vmaDestroyBuffer(manager.allocator, staging_buffer, staging_alloc);
+
+        TransferSubmit sub = submit_transfer(manager, [=](VkCommandBuffer cmd) {
             VkBufferCopy region{ 0, 0, size };
             vkCmdCopyBuffer(cmd, staging_buffer, dst_buffer, 1, &region);
         });
-
-        vmaDestroyBuffer(manager.allocator, staging_buffer, staging_alloc);
+        manager.pending_uploads.push_back({ staging_buffer, staging_alloc, sub.cmd, sub.value });
 	}
 
 	void vulkan_destroy_buffer(ResourceManager& manager, BufferHandle handle, FrameContext& frame) {
@@ -491,6 +584,13 @@ namespace Nevarea::Renderer {
 		image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
 		image_info.usage = usage;
 		image_info.flags = to_vk_image_create_flags(description.flags, description.image_type);
+
+		uint32_t families[2] = { manager.graphics_family, manager.transfer_family };
+		if (manager.graphics_family != manager.transfer_family) {
+		    image_info.sharingMode = VK_SHARING_MODE_CONCURRENT;
+			image_info.queueFamilyIndexCount = 2;
+			image_info.pQueueFamilyIndices = families;
+		}
 
 		VmaAllocationCreateInfo alloc_info{};
 		alloc_info.usage = to_vma_memory(description.memory_location);
@@ -598,7 +698,7 @@ namespace Nevarea::Renderer {
         memcpy(data, pixels, size);
         vmaUnmapMemory(manager.allocator, staging_alloc);
 
-        vulkan_immediate_submit(manager, [&](VkCommandBuffer cmd) {
+        /*vulkan_immediate_submit(manager, [&](VkCommandBuffer cmd) {
             transition_image(cmd, img.image,
                 img.current_layout,
                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -630,7 +730,39 @@ namespace Nevarea::Renderer {
             img.current_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         });
 
-        vmaDestroyBuffer(manager.allocator, staging, staging_alloc);
+        vmaDestroyBuffer(manager.allocator, staging, staging_alloc);*/
+
+        TransferSubmit sub = submit_transfer(manager, [=](VkCommandBuffer cmd) {
+            transition_image(cmd, img.image,
+                img.current_layout,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, 0,
+                VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
+
+            VkBufferImageCopy region{};
+            region.bufferOffset = 0;
+            region.bufferRowLength = 0;
+            region.bufferImageHeight = 0;
+            region.imageSubresource.aspectMask = k_format_info[(uint32_t)img.format].aspect;
+            region.imageSubresource.mipLevel = 0;
+            region.imageSubresource.baseArrayLayer = 0;
+            region.imageSubresource.layerCount = 1;
+            region.imageOffset = { 0, 0, 0 };
+            region.imageExtent = { img.extent.width, img.extent.height, 1 };
+
+            vkCmdCopyBufferToImage(cmd, staging, img.image,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                1, &region);
+
+            transition_image(cmd, img.image,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                VK_PIPELINE_STAGE_2_COPY_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, 0);
+        });
+
+        manager.pending_uploads.push_back({ staging, staging_alloc, sub.cmd, sub.value });
+        img.current_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	}
 
 	void vulkan_destroy_image(ResourceManager& manager, ImageHandle handle, FrameContext& frame)

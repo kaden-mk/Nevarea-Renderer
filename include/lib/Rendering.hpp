@@ -18,6 +18,12 @@ namespace Nevarea {
         R32_UINT,
         // depth / depth-stencil
         D16_UNORM, D32_SFLOAT, D24_UNORM_S8_UINT, D32_SFLOAT_S8_UINT,
+        // bc
+        BC1_RGBA_UNORM, BC1_RGBA_SRGB,
+        BC3_UNORM, BC3_SRGB,
+        BC4_UNORM,
+        BC5_UNORM,
+        BC7_UNORM, BC7_SRGB,
 
         COUNT
     };

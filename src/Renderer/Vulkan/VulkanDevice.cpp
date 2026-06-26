@@ -130,7 +130,8 @@ namespace Nevarea::Renderer {
 			&& device_features.features.samplerAnisotropy
 			&& device_features.features.vertexPipelineStoresAndAtomics
 			&& device_features.features.fragmentStoresAndAtomics
-			&& device_features.features.shaderInt64;
+			&& device_features.features.shaderInt64
+		    && device_features.features.textureCompressionBC;
 	}
 
 	static void query_capabilities(DeviceContext& device_context) {
@@ -294,6 +295,7 @@ namespace Nevarea::Renderer {
 		features2.features.vertexPipelineStoresAndAtomics = VK_TRUE;
 		features2.features.fragmentStoresAndAtomics = VK_TRUE;
 		features2.features.shaderInt64 = VK_TRUE;
+		features2.features.textureCompressionBC = VK_TRUE;
 		features2.pNext = &features13;
 
 		// holy shit
