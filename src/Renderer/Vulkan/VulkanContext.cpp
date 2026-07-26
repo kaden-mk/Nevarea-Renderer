@@ -40,7 +40,7 @@ namespace Nevarea::Renderer {
 
 		for (const char* extension : optional_instance_extensions) {
 			if (available.count(extension) > 0) enabled_extensions.push_back(extension);
-			else std::cerr << "[NEVAREA]: optional instance extension '" << extension << "' not available, skipping\n";
+			else NEVAREA_LOG(LogLevel::WARN, "optional instance extension: '%s' not avaliable, skipping\n", extension);
 		}
 
 		VkDebugUtilsMessengerCreateInfoEXT debug_create_info{};
@@ -69,7 +69,7 @@ namespace Nevarea::Renderer {
 					if (strcmp(layer.layerName, requested) == 0) { found = true; break; }
 
 				if (found) enabled_layers.push_back(requested);
-				else std::cerr << "[NEVAREA]: validation layer '" << requested << "' not available, skipping\n";
+				else NEVAREA_LOG(LogLevel::WARN, "validation layer: '%s' is not avaliable, skipping\n", requested);
 			}
 
 			instance_create_info.enabledLayerCount = static_cast<uint32_t>(enabled_layers.size());
@@ -138,8 +138,6 @@ namespace Nevarea::Renderer {
 		volkLoadDevice(context.device.device);
 		vulkan_context_create_allocator(context.instance, context.device.physical_device, context.device.device, context.allocator, context.device.capabilities.memory_priority);
 		vulkan_resources_init(context.resource_manager, context.allocator, context.device);
-		vulkan_swapchain_init(context.swapchain, context.device, context.surface, context.window);
-		vulkan_frame_sync_init(context.frame_sync, context.device, static_cast<uint32_t>(context.swapchain.images.size()));
 	}
 
 	static void transition_tracked(VkCommandBuffer cmd, AllocatedImage& img, VkImageLayout new_layout,

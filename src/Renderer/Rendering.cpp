@@ -3,9 +3,12 @@
 #include "Renderer/Vulkan/VulkanContext.hpp"
 #include "Renderer/Vulkan/VulkanFrames.hpp"
 #include "Renderer/Vulkan/VulkanResourceManager.hpp"
+#include "Renderer/Vulkan/VulkanSwapchain.hpp"
 #include "Renderer/Vulkan/VulkanTranslate.hpp"
-#include "lib/Core.hpp"
+#include "lib/Logging.hpp"
 #include "lib/WindowSystem.hpp"
+#include <cstdio>
+#include "Core/n_pch.hpp"
 
 namespace Nevarea {
 	namespace {
@@ -65,18 +68,74 @@ namespace Nevarea {
 		render_state->is_active = false;
 	}
 
-	void renderer_hook_window(RenderContext context, WindowHandle window)
+	static SwapchainDescription create_swapchain_data(RenderContext context, const SwapchainDescription& swapchain_description) {
+    	SwapchainDescription want = swapchain_description;
+        RenderState* render_state = resolve(context);
+
+        switch (render_state->api) {
+            case RenderingAPI::VULKAN: {
+                auto& vk = render_state->vulkan;
+			    Renderer::SwapchainData swapchain_data{};
+
+				if (!renderer_swapchain_format_supported(context, want.format, want.color_space)) {
+                    NEVAREA_LOG(LogLevel::WARN, "Swapchain Format not supported! Fallbacking to default!");
+                    want.format = Format::BGRA8_SRGB;
+                    want.color_space = ColorSpace::SDR_SRGB;
+                }
+
+                if (!renderer_swapchain_present_mode_supported(context, want.present_mode)) {
+                    NEVAREA_LOG(LogLevel::WARN, "Swapchain Present Mode not supported! Falling back to default!");
+                    want.present_mode = PresentMode::VSYNC;
+                }
+
+                uint32_t count = want.image_count ? want.image_count : vk.surface.capabilities.minImageCount + 1;
+                count = (std::max)(count, vk.surface.capabilities.minImageCount);
+
+                if (vk.surface.capabilities.maxImageCount > 0)
+                    count = (std::min)(count, vk.surface.capabilities.maxImageCount);
+
+                want.image_count = count;
+
+     			swapchain_data.present_mode = Renderer::to_vk_present_mode(want.present_mode);
+                swapchain_data.color_space = Renderer::to_vk_color_space(want.color_space);
+                swapchain_data.format = Renderer::to_vk_format(want.format);
+                swapchain_data.image_count = want.image_count;
+                swapchain_data.image_usage = Renderer::to_vk_image_usage(want.image_usage);
+
+                vk.swapchain.data = swapchain_data;
+                break;
+            }
+
+            case RenderingAPI::NONE: {
+                break;
+            }
+        }
+
+        return {};
+	}
+
+	SwapchainDescription renderer_hook_window(RenderContext context, WindowHandle window, const SwapchainDescription& swapchain_description)
 	{
 		RenderState* render_state = resolve(context);
 
 		switch (render_state->api) {
-			case RenderingAPI::VULKAN:
-				Renderer::vulkan_context_init(render_state->vulkan, window);
-				break;
+			case RenderingAPI::VULKAN: {
+			    auto& vk = render_state->vulkan;
 
+    			Renderer::vulkan_context_init(vk, window);
+                Renderer::query_swapchain_support(vk.device.physical_device, vk.surface);
+
+			    SwapchainDescription want = create_swapchain_data(context, swapchain_description);
+
+    			Renderer::vulkan_swapchain_init(vk.swapchain, vk.device, vk.surface, vk.window);
+    			Renderer::vulkan_frame_sync_init(vk.frame_sync, vk.device, static_cast<uint32_t>(vk.swapchain.images.size()));
+				return want;
+			}
 			case RenderingAPI::NONE:
 				break;
 		}
+
+		return {};
 	}
 
 	void renderer_draw(RenderContext context)
@@ -208,22 +267,70 @@ namespace Nevarea {
 		return false;
 	}
 
-	void renderer_set_present_mode(RenderContext context, PresentMode mode) {
-		RenderState* render_state = resolve(context);
+	NEVAREA_API SwapchainDescription renderer_update_swapchain(RenderContext context, const SwapchainDescription& description) {
+	    RenderState* render_state = resolve(context);
 
 		switch (render_state->api) {
-			case RenderingAPI::VULKAN: {
+		    case RenderingAPI::VULKAN: {
 				auto& vk = render_state->vulkan;
-				vk.swapchain.desired_present_mode = Renderer::to_vk_present_mode(mode);
-				Renderer::recreate_swapchain(vk.swapchain, vk.device, vk.surface, vk.window);
+                SwapchainDescription want = create_swapchain_data(context, description);
+                Renderer::recreate_swapchain(vk.swapchain, vk.device, vk.surface, vk.window);
 				Renderer::vulkan_frame_sync_ensure_present_semaphores(vk.frame_sync, vk.device.device, static_cast<uint32_t>(vk.swapchain.images.size()));
-				break;
+				return want;
 			}
+
 			case RenderingAPI::NONE:
-				break;
+			    break;
 		}
+
+		return {};
 	}
 
+	bool renderer_swapchain_format_supported(RenderContext context, Format format, ColorSpace color_space) {
+        RenderState* render_state = resolve(context);
+
+        switch (render_state->api) {
+        case RenderingAPI::VULKAN: {
+            auto& vk = render_state->vulkan;
+
+            for (const auto& surface_format : vk.surface.supported_formats) {
+    			if (surface_format.format == Renderer::to_vk_format(format)
+                        && surface_format.colorSpace == Renderer::to_vk_color_space(color_space))
+
+    				return true;
+    		}
+
+            return false;
+        }
+
+        case RenderingAPI::NONE:
+            break;
+        }
+
+        return false;
+	}
+
+	bool renderer_swapchain_present_mode_supported(RenderContext context, PresentMode mode) {
+        RenderState* render_state = resolve(context);
+
+        switch (render_state->api) {
+        case RenderingAPI::VULKAN: {
+            auto& vk = render_state->vulkan;
+
+            for (auto& present_mode : vk.surface.supported_present_modes) {
+                if (present_mode == Renderer::to_vk_present_mode(mode))
+                    return true;
+            }
+
+            return false;
+        }
+
+        case RenderingAPI::NONE:
+            break;
+        }
+
+        return false;
+	}
 	Pipeline renderer_create_compute_pipeline(RenderContext context, const char* compute) {
 		RenderState* render_state = resolve(context);
 

@@ -4,11 +4,18 @@
 #include "lib/WindowSystem.hpp"
 
 #include "Core/n_pch.hpp"
-#include <lib/Rendering.hpp>
 
 namespace Nevarea::Renderer {
 	struct DeletionQueue {
 		std::vector<std::function<void()>> deletors;
+	};
+
+	struct SwapchainData {
+        VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
+        VkFormat format = VK_FORMAT_B8G8R8A8_SRGB;
+        VkColorSpaceKHR color_space = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+        uint32_t image_count = 0;
+        VkImageUsageFlags image_usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 	};
 
 	struct SwapchainContext {
@@ -16,13 +23,14 @@ namespace Nevarea::Renderer {
         VkFormat image_format;
         VkExtent2D extent;
 
+        SwapchainData data;
+
         uint32_t current_image_index;
 
         std::vector<VkImage> images;
         std::vector<VkImageView> image_views;
 
         bool resized = false;
-        VkPresentModeKHR desired_present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
 	};
 
     struct FrameContext {

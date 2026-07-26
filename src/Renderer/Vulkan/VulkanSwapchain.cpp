@@ -1,5 +1,6 @@
 #include "VulkanSwapchain.hpp"
 #include "VulkanDebug.hpp"
+#include "lib/Core.hpp"
 
 namespace Nevarea::Renderer {
 	void query_swapchain_support(VkPhysicalDevice physical_device, SurfaceContext& surface) {
@@ -20,13 +21,14 @@ namespace Nevarea::Renderer {
 		}
 	}
 
-	static VkSurfaceFormatKHR choose_surface_format(std::vector<VkSurfaceFormatKHR> surface_formats) {
+	static VkSurfaceFormatKHR choose_surface_format(std::vector<VkSurfaceFormatKHR> surface_formats, VkFormat desired_format, VkColorSpaceKHR desired_color_space) {
 		for (const auto& format : surface_formats) {
-			if (format.format == VK_FORMAT_B8G8R8A8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+			if (format.format == desired_format && format.colorSpace == desired_color_space)
 				return format;
 		}
 
-		return surface_formats[0];
+		NEVAREA_ASSERT(false, "VULKAN SWAPCHAIN", "Could not find a compatible surface format!");
+		return surface_formats[0]; // :(
 	}
 
 	static VkExtent2D choose_swapchain_extent(const VkSurfaceCapabilitiesKHR& capabilities, VkExtent2D initial_window_extent) {
@@ -87,8 +89,8 @@ namespace Nevarea::Renderer {
 	void vulkan_swapchain_init(SwapchainContext& swapchain, DeviceContext& device, SurfaceContext& surface, WindowHandle window, VkSwapchainKHR old_swapchain)
 	{
 		VkExtent2D swapchain_extent = query_swapchain_extent(window, device, surface);
-		VkSurfaceFormatKHR surface_format = choose_surface_format(surface.supported_formats);
-		VkPresentModeKHR swapchain_present_mode = choose_swapchain_present_mode(surface.supported_present_modes, swapchain.desired_present_mode);
+		VkSurfaceFormatKHR surface_format = choose_surface_format(surface.supported_formats, swapchain.data.format, swapchain.data.color_space);
+		VkPresentModeKHR swapchain_present_mode = choose_swapchain_present_mode(surface.supported_present_modes, swapchain.data.present_mode);
 
 		VkSwapchainCreateInfoKHR create_info{};
 		create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -96,16 +98,12 @@ namespace Nevarea::Renderer {
 		create_info.flags = 0;
 		create_info.surface = surface.surface;
 
-		uint32_t image_count = surface.capabilities.minImageCount + 1;
-		if (surface.capabilities.minImageCount > 0 && image_count > surface.capabilities.maxImageCount)
-			image_count = surface.capabilities.maxImageCount;
-
-		create_info.minImageCount = image_count;
+		create_info.minImageCount = swapchain.data.image_count;
 		create_info.imageFormat = surface_format.format;
 		create_info.imageColorSpace = surface_format.colorSpace;
 		create_info.imageExtent = swapchain_extent;
 		create_info.imageArrayLayers = 1;
-		create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+		create_info.imageUsage = swapchain.data.image_usage;
 
 		uint32_t sharing_families[] = { device.graphics_family_index, device.present_family_index };
 		if (device.graphics_family_index != device.present_family_index) {

@@ -29,4 +29,5 @@ namespace Nevarea::Renderer {
 	VkIndexType to_vk_index_type(IndexType type);
 	VkBuildAccelerationStructureFlagsKHR to_vk_accel_build_flags(uint32_t flags);
 	VkGeometryFlagsKHR to_vk_geometry_flags(uint32_t flags);
+	VkColorSpaceKHR to_vk_color_space(ColorSpace color_space);
 }

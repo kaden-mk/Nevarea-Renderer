@@ -239,4 +239,14 @@ namespace Nevarea::Renderer {
         if (flags & AccelGeometryFlags::NO_DUPLICATE_ANY_HIT) out |= VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR;
         return out;
     }
+
+    VkColorSpaceKHR to_vk_color_space(ColorSpace color_space) {
+        switch (color_space) {
+            case ColorSpace::SDR_SRGB: return VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+            case ColorSpace::HDR10_ST2084: return VK_COLOR_SPACE_HDR10_ST2084_EXT;
+            case ColorSpace::SCRGB_LINEAR: return VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT;
+        }
+
+        return VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    }
 }

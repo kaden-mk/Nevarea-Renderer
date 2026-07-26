@@ -52,6 +52,7 @@ namespace Nevarea {
     enum class AccelBuildMode : uint32_t { BUILD, UPDATE };
     enum class AccelGeometryType : uint32_t { TRIANGLES, AABBS, INSTANCES };
     enum class IndexType : uint32_t { NONE, UINT16, UINT32 };
+    enum class ColorSpace : uint32_t { SDR_SRGB, HDR10_ST2084, SCRGB_LINEAR };
 
 	namespace ImageUsage {
 		enum : uint32_t {
@@ -238,6 +239,14 @@ namespace Nevarea {
         bool present = false;
     };
 
+    struct SwapchainDescription {
+        Format format = Format::BGRA8_SRGB;
+        ColorSpace color_space = ColorSpace::SDR_SRGB;
+        PresentMode present_mode = PresentMode::VSYNC;
+        uint32_t image_count = 0;
+        uint32_t image_usage = ImageUsage::COLOR_TARGET;
+    };
+
     struct DrawCommand {
         Pipeline pipeline;
         Buffer index_buffer;
@@ -253,7 +262,7 @@ namespace Nevarea {
 	NEVAREA_API RenderContext renderer_create(RenderingAPI api);
 	NEVAREA_API void renderer_destroy(RenderContext renderer);
 
-	NEVAREA_API void renderer_hook_window(RenderContext renderer, WindowHandle window);
+	NEVAREA_API SwapchainDescription renderer_hook_window(RenderContext renderer, WindowHandle window, const SwapchainDescription& swapchain_description = {});
 	NEVAREA_API void renderer_draw(RenderContext renderer);
 
 	NEVAREA_API void renderer_begin_pass(RenderContext renderer, const RenderPassDescription& description);
@@ -265,7 +274,9 @@ namespace Nevarea {
 
 	NEVAREA_API NvWinExtent renderer_get_swapchain_extent(RenderContext renderer);
 	NEVAREA_API bool renderer_swapchain_resized(RenderContext renderer);
-	NEVAREA_API void renderer_set_present_mode(RenderContext renderer, PresentMode mode);
+	NEVAREA_API SwapchainDescription renderer_update_swapchain(RenderContext renderer, const SwapchainDescription& description = {});
+	NEVAREA_API bool renderer_swapchain_format_supported(RenderContext renderer, Format format, ColorSpace color_space);
+	NEVAREA_API bool renderer_swapchain_present_mode_supported(RenderContext renderer, PresentMode mode);
 
 	NEVAREA_API Pipeline renderer_create_pipeline(RenderContext renderer, const PipelineDescription& description);
 	NEVAREA_API Pipeline renderer_create_compute_pipeline(RenderContext renderer, const char* compute);

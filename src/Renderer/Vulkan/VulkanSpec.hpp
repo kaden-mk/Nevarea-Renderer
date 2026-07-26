@@ -18,6 +18,7 @@ namespace Nevarea::Renderer {
 	const std::vector<const char*> optional_instance_extensions = {
 	    VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME,
 		VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME,
+		VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME
 	};
 
 	const std::vector<const char*> required_device_extensions = {

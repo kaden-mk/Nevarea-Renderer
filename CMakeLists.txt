@@ -23,6 +23,7 @@ add_library(NevareaRenderer ${NEVAREA_LIB_TYPE}
     src/Renderer/Vulkan/VulkanSwapchain.cpp
     src/Renderer/Vulkan/VulkanFrames.cpp
     src/Renderer/Rendering.cpp
+    src/Core/Log.cpp
  "src/Renderer/Vulkan/VulkanAllocator.cpp" "src/Renderer/Vulkan/VulkanResourceManager.cpp" "src/Renderer/Vulkan/VulkanPipeline.cpp" "src/Renderer/Vulkan/VulkanDebug.cpp" "src/Renderer/Vulkan/VulkanTranslate.cpp" "src/Renderer/Vulkan/vulkan_interop.cpp")
 
 target_precompile_headers(NevareaRenderer PRIVATE
@@ -57,7 +58,7 @@ elseif(UNIX)
 endif()
 
 set_target_properties(NevareaRenderer PROPERTIES
-    CXX_STANDARD 20
+    CXX_STANDARD 23
     CXX_STANDARD_REQUIRED ON
 )
 
